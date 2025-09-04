@@ -179,6 +179,19 @@ def generate_launch_description():
             'tensor_name': 'output_tensor',
         }])
 
+    # Convert Detection2DArray -> Detection2D (pick highest confidence or desired class)
+    detection2_d_array_filter_node = ComposableNode(
+        name='detection2_d_array_filter',
+        package='isaac_ros_foundationpose',
+        plugin='nvidia::isaac_ros::foundationpose::Detection2DArrayFilter',
+        parameters=[{
+            # Leave empty to select highest confidence regardless of class
+            'desired_class_id': ''
+        }],
+        remappings=[('detection2_d_array', 'detections_output'),
+                    ('detection2_d', 'detection2_d')]
+    )
+
     detection2_d_to_mask_node = ComposableNode(
         name='detection2_d_to_mask',
         package='isaac_ros_foundationpose',
@@ -187,7 +200,7 @@ def generate_launch_description():
             'mask_width': int(REALSENSE_IMAGE_WIDTH / REALSENSE_TO_YOLO_RATIO),
             'mask_height': int(REALSENSE_IMAGE_HEIGHT / REALSENSE_TO_YOLO_RATIO),
         }],
-        remappings=[('detection2_d_array', 'detections_output'),
+        remappings=[('detection2_d', 'detection2_d'),
                     ('segmentation', 'yolov8_segmentation_small')])
 
     resize_mask_node = ComposableNode(
@@ -298,6 +311,7 @@ def generate_launch_description():
             convert_metric_node,
             tensor_rt_node,
             yolov8_decoder_node,
+            detection2_d_array_filter_node,
             detection2_d_to_mask_node,
             resize_mask_node,
             selector_node,
