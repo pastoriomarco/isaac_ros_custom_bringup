@@ -26,7 +26,7 @@ Example with Ultralytics export defaults (`images`/`output0`):
     input_binding_names:='["images"]' \
     output_tensor_names:='["output_tensor"]' \
     output_binding_names:='["output0"]' \
-    confidence_threshold:=0.25 nms_threshold:=0.45 num_classes:=80 \
+    confidence_threshold:=0.25 nms_threshold:=0.45 num_classes:=1 \
     image_input_topic:=/rgb/image_rect_color camera_info_input_topic:=/rgb/camera_info
 ```
 
@@ -40,7 +40,7 @@ YOLOv8 → FoundationPose (RealSense)
     input_binding_names:='["images"]' \
     output_tensor_names:='["output_tensor"]' \
     output_binding_names:='["output0"]' \
-    confidence_threshold:=0.25 nms_threshold:=0.45 num_classes:=80 \
+    confidence_threshold:=0.25 nms_threshold:=0.45 num_classes:=1 \
     mesh_file_path:=$HOME/meshes/workpiece.obj \
     texture_path:=$HOME/meshes/flat_gray.png \
     refine_model_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/refine_model.onnx \
@@ -80,7 +80,7 @@ Run Launch File
 #with engine update, model _a
 
 ```bash
-ros2 launch isaac_ros_yolov8 my_yolov8.launch.py \
+ros2 launch isaac_ros_custom_bringup yolov8_inference.launch.py \
   model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/td06_a.onnx \
   engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/td06_a.plan \
   network_image_width:=640 network_image_height:=640 \
@@ -96,7 +96,7 @@ ros2 launch isaac_ros_yolov8 my_yolov8.launch.py \
 #threshold, no engine update, model _c
 
 ```bash
-ros2 launch isaac_ros_yolov8 my_yolov8.launch.py \
+ros2 launch isaac_ros_custom_bringup yolov8_inference.launch.py \
   model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/td06_c.onnx \
   engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/td06_c.plan \
   network_image_width:=640 \
