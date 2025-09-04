@@ -50,6 +50,7 @@ YOLOv8 → FoundationPose (RealSense)
     launch_rviz:=True
 ```
 
+```bash
 ros2 launch isaac_ros_custom_bringup yolov8_foundationpose_bag.launch.py \
   yolov8_model_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/yolov8/td06_c.onnx \
   yolov8_engine_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/yolov8/td06_c.plan \
@@ -65,6 +66,7 @@ ros2 launch isaac_ros_custom_bringup yolov8_foundationpose_bag.launch.py \
   score_model_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/score_model.onnx \
   score_engine_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/score_trt_engine.plan \
   image_input_topic:=/image_rect camera_info_input_topic:=/camera_info_rect depth_image_topic:=/depth/image_rect
+```
 
 Notes
 - The encoder letterboxes 1280×720 → 640×640. The mask is created at 640×360 (valid content) and resized to 1280×720 so RGB/depth/mask match (required by FoundationPose).
