@@ -5,7 +5,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 import launch
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import ComposableNodeContainer, Node
@@ -53,6 +53,8 @@ def generate_launch_description():
         DeclareLaunchArgument('num_classes', default_value='80'),
         DeclareLaunchArgument('launch_rviz', default_value='False'),
         DeclareLaunchArgument('container_name', default_value='yolov8_foundationpose_container'),
+        # Depth handling: set True if remote depth is 32FC1 (meters)
+        DeclareLaunchArgument('depth_is_float', default_value='False'),
     ]
 
     mesh_file_path = LaunchConfiguration('mesh_file_path')
@@ -74,9 +76,10 @@ def generate_launch_description():
     remote_color_image_topic = LaunchConfiguration('remote_color_image_topic')
     remote_color_info_topic = LaunchConfiguration('remote_color_info_topic')
     remote_depth_aligned_topic = LaunchConfiguration('remote_depth_aligned_topic')
+    depth_is_float = LaunchConfiguration('depth_is_float')
 
-    # Drop node: taps remote RealSense topics and republishes canonical ones
-    drop_node = ComposableNode(
+    # Drop nodes: choose based on depth encoding
+    drop_node_uint16 = ComposableNode(
         name='drop_node',
         package='isaac_ros_nitros_topic_tools',
         plugin='nvidia::isaac_ros::nitros::NitrosCameraDropNode',
@@ -86,12 +89,27 @@ def generate_launch_description():
                     ('depth_1', remote_depth_aligned_topic),
                     ('image_1_drop', 'rgb/image_rect_color'),
                     ('camera_info_1_drop', 'rgb/camera_info'),
-                    ('depth_1_drop', 'depth_uint16')])
+                    ('depth_1_drop', 'depth_uint16')],
+        condition=UnlessCondition(depth_is_float))
+
+    drop_node_float = ComposableNode(
+        name='drop_node',
+        package='isaac_ros_nitros_topic_tools',
+        plugin='nvidia::isaac_ros::nitros::NitrosCameraDropNode',
+        parameters=[{'X': 6, 'Y': 30, 'mode': 'mono+depth', 'depth_format_string': 'nitros_image_32FC1'}],
+        remappings=[('image_1', remote_color_image_topic),
+                    ('camera_info_1', remote_color_info_topic),
+                    ('depth_1', remote_depth_aligned_topic),
+                    ('image_1_drop', 'rgb/image_rect_color'),
+                    ('camera_info_1_drop', 'rgb/camera_info'),
+                    ('depth_1_drop', 'depth_image')],
+        condition=IfCondition(depth_is_float))
 
     convert_metric_node = ComposableNode(
         package='isaac_ros_depth_image_proc',
         plugin='nvidia::isaac_ros::depth_image_proc::ConvertMetricNode',
-        remappings=[('image_raw', 'depth_uint16'), ('image', 'depth_image')])
+        remappings=[('image_raw', 'depth_uint16'), ('image', 'depth_image')],
+        condition=UnlessCondition(depth_is_float))
 
     # Encoder (letterbox 1280x720 -> 640x640)
     encoder_dir = get_package_share_directory('isaac_ros_dnn_image_encoder')
@@ -245,7 +263,8 @@ def generate_launch_description():
         executable='component_container_mt',
         composable_node_descriptions=[
             # No RealSense driver here. It runs remotely.
-            drop_node,
+            drop_node_uint16,
+            drop_node_float,
             convert_metric_node,
             tensor_rt_node,
             yolov8_decoder_node,
@@ -259,4 +278,3 @@ def generate_launch_description():
         output='screen')
 
     return launch.LaunchDescription(launch_args + [container, yolov8_encoder_launch, rviz_node])
-

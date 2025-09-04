@@ -62,12 +62,15 @@ ros2 launch isaac_ros_custom_bringup yolov8_foundationpose_realsense_remote.laun
   remote_color_image_topic:=/color/image_raw \
   remote_color_info_topic:=/color/camera_info \
   remote_depth_aligned_topic:=/aligned_depth_to_color/image_raw \
+  depth_is_float:=True \
   launch_rviz:=True
 ```
 Required incoming topics (from remote RealSense):
 - `/color/image_raw`: RGB image (sensor_msgs/Image, rgb8)
 - `/color/camera_info`: Camera intrinsics (sensor_msgs/CameraInfo)
-- `/aligned_depth_to_color/image_raw`: Depth aligned to color (sensor_msgs/Image, 16UC1 in mm)
+- `/aligned_depth_to_color/image_raw`: Depth aligned to color (sensor_msgs/Image)
+  - If 16UC1 in mm (RealSense-like), use default settings
+  - If 32FC1 in meters (Isaac Sim-like), add `depth_is_float:=True`
 What FoundationPose subscribes to in this graph:
 - `pose_estimation/image`: RGB image (nitros_image_rgb8) — produced via encoder/drop remap
 - `pose_estimation/camera_info`: Camera model (nitros_camera_info)
