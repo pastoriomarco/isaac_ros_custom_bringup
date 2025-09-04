@@ -35,6 +35,10 @@ def generate_launch_description():
         DeclareLaunchArgument('remote_color_info_topic', default_value='/color/camera_info'),
         DeclareLaunchArgument('remote_depth_aligned_topic', default_value='/aligned_depth_to_color/image_raw'),
 
+        # Match upstream RealSense drop/frequency behavior
+        DeclareLaunchArgument('hawk_expect_freq', default_value='28'),
+        DeclareLaunchArgument('input_images_drop_freq', default_value='30'),
+
         # Assets / engines
         DeclareLaunchArgument('mesh_file_path', default_value=''),
         DeclareLaunchArgument('texture_path', default_value=''),
@@ -55,6 +59,9 @@ def generate_launch_description():
         DeclareLaunchArgument('container_name', default_value='yolov8_foundationpose_container'),
         # Depth handling: set True if remote depth is 32FC1 (meters)
         DeclareLaunchArgument('depth_is_float', default_value='False'),
+
+        # Optional tracking (enables selector + tracking together)
+        DeclareLaunchArgument('enable_tracking', default_value='False'),
     ]
 
     mesh_file_path = LaunchConfiguration('mesh_file_path')
@@ -77,13 +84,20 @@ def generate_launch_description():
     remote_color_info_topic = LaunchConfiguration('remote_color_info_topic')
     remote_depth_aligned_topic = LaunchConfiguration('remote_depth_aligned_topic')
     depth_is_float = LaunchConfiguration('depth_is_float')
+    hawk_expect_freq = LaunchConfiguration('hawk_expect_freq')
+    input_images_drop_freq = LaunchConfiguration('input_images_drop_freq')
+    enable_tracking = LaunchConfiguration('enable_tracking')
 
     # Drop nodes: choose based on depth encoding
     drop_node_uint16 = ComposableNode(
         name='drop_node',
         package='isaac_ros_nitros_topic_tools',
         plugin='nvidia::isaac_ros::nitros::NitrosCameraDropNode',
-        parameters=[{'X': 6, 'Y': 30, 'mode': 'mono+depth', 'depth_format_string': 'nitros_image_mono16'}],
+        parameters=[{
+            'X': hawk_expect_freq,
+            'Y': input_images_drop_freq,
+            'mode': 'mono+depth',
+            'depth_format_string': 'nitros_image_mono16'}],
         remappings=[('image_1', remote_color_image_topic),
                     ('camera_info_1', remote_color_info_topic),
                     ('depth_1', remote_depth_aligned_topic),
@@ -96,7 +110,11 @@ def generate_launch_description():
         name='drop_node',
         package='isaac_ros_nitros_topic_tools',
         plugin='nvidia::isaac_ros::nitros::NitrosCameraDropNode',
-        parameters=[{'X': 6, 'Y': 30, 'mode': 'mono+depth', 'depth_format_string': 'nitros_image_32FC1'}],
+        parameters=[{
+            'X': hawk_expect_freq,
+            'Y': input_images_drop_freq,
+            'mode': 'mono+depth',
+            'depth_format_string': 'nitros_image_32FC1'}],
         remappings=[('image_1', remote_color_image_topic),
                     ('camera_info_1', remote_color_info_topic),
                     ('depth_1', remote_depth_aligned_topic),
@@ -184,7 +202,7 @@ def generate_launch_description():
             'disable_padding': False,
         }],
         remappings=[('image', 'yolov8_segmentation_small'),
-                    ('camera_info', 'rgb/camera_info'),
+                    ('camera_info', 'yolov8_encoder/resize/camera_info'),
                     ('resize/image', 'segmentation'),
                     ('resize/camera_info', 'camera_info_segmentation')])
 
@@ -196,7 +214,8 @@ def generate_launch_description():
         remappings=[('depth_image', 'depth_image'),
                     ('image', 'rgb/image_rect_color'),
                     ('camera_info', 'rgb/camera_info'),
-                    ('segmentation', 'segmentation')])
+                    ('segmentation', 'segmentation')],
+        condition=IfCondition(enable_tracking))
 
     foundationpose_node = ComposableNode(
         name='foundationpose_node',
@@ -232,7 +251,8 @@ def generate_launch_description():
             'refine_input_binding_names': ['input1', 'input2'],
             'refine_output_tensor_names': ['output_tensor1', 'output_tensor2'],
             'refine_output_binding_names': ['output1', 'output2'],
-        }])
+        }],
+        condition=IfCondition(enable_tracking))
 
     resize_left_viz = ComposableNode(
         name='resize_left_viz',
