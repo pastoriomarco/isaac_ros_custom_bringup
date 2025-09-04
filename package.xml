@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>isaac_ros_custom_bringup</name>
+  <version>0.1.0</version>
+  <description>Custom bringup package bundling YOLOv8 detection and Isaac ROS FoundationPose with RealSense RGB-D.</description>
+
+  <maintainer email="devnull@example.com">maintainer</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+
+  <!-- Runtime dependencies for the launch graph -->
+  <exec_depend>realsense2_camera</exec_depend>
+  <exec_depend>isaac_ros_nitros_topic_tools</exec_depend>
+  <exec_depend>isaac_ros_depth_image_proc</exec_depend>
+  <exec_depend>isaac_ros_dnn_image_encoder</exec_depend>
+  <exec_depend>isaac_ros_tensor_rt</exec_depend>
+  <exec_depend>isaac_ros_yolov8</exec_depend>
+  <exec_depend>isaac_ros_image_proc</exec_depend>
+  <exec_depend>isaac_ros_foundationpose</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
