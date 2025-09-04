@@ -50,6 +50,22 @@ YOLOv8 → FoundationPose (RealSense)
     launch_rviz:=True
 ```
 
+ros2 launch isaac_ros_custom_bringup yolov8_foundationpose_bag.launch.py \
+  yolov8_model_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/yolov8/td06_c.onnx \
+  yolov8_engine_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/yolov8/td06_c.plan \
+  input_tensor_names:='["input_tensor"]' \
+  input_binding_names:='["images"]' \
+  output_tensor_names:='["output_tensor"]' \
+  output_binding_names:='["output0"]' \
+  confidence_threshold:=0.25 nms_threshold:=0.45 num_classes:=1 \
+  mesh_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/objects/TD06/TDNS06.obj \
+  texture_path:=$ISAAC_ROS_WS/isaac_ros_assets/objects/TD06/gray.png \
+  refine_model_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/refine_model.onnx \
+  refine_engine_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/refine_trt_engine.plan \
+  score_model_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/score_model.onnx \
+  score_engine_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/score_trt_engine.plan \
+  image_input_topic:=/image_rect camera_info_input_topic:=/camera_info_rect depth_image_topic:=/depth/image_rect
+
 Notes
 - The encoder letterboxes 1280×720 → 640×640. The mask is created at 640×360 (valid content) and resized to 1280×720 so RGB/depth/mask match (required by FoundationPose).
 - Depth is converted from uint16 mm → float32 meters using `ConvertMetricNode`.
