@@ -200,6 +200,8 @@ def generate_launch_description():
             'output_height': REALSENSE_IMAGE_HEIGHT,
             'keep_aspect_ratio': False,
             'disable_padding': False,
+            # Ensure mask encoding matches FoundationPose expectation
+            'encoding_desired': 'mono8',
         }],
         remappings=[('image', 'yolov8_segmentation_small'),
                     ('camera_info', 'yolov8_encoder/resize/camera_info'),
@@ -236,7 +238,14 @@ def generate_launch_description():
             'score_input_binding_names': ['input1', 'input2'],
             'score_output_tensor_names': ['output_tensor'],
             'score_output_binding_names': ['output1'],
-        }])
+        }],
+        remappings=[
+            ('pose_estimation/depth_image', 'depth_image'),
+            ('pose_estimation/image', 'rgb/image_rect_color'),
+            ('pose_estimation/camera_info', 'rgb/camera_info'),
+            ('pose_estimation/segmentation', 'segmentation'),
+            ('pose_estimation/output', 'output')
+        ])
 
     foundationpose_tracking_node = ComposableNode(
         name='foundationpose_tracking_node',
