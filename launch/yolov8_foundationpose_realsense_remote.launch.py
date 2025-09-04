@@ -143,8 +143,8 @@ def generate_launch_description():
             'attach_to_shared_component_container': 'True',
             'component_container_name': container_name,
             'dnn_image_encoder_namespace': 'yolov8_encoder',
-            'image_input_topic': 'rgb/image_rect_color',
-            'camera_info_input_topic': 'rgb/camera_info',
+            'image_input_topic': '/rgb/image_rect_color',
+            'camera_info_input_topic': '/rgb/camera_info',
             'tensor_output_topic': '/tensor_pub',
             'keep_aspect_ratio': 'True',
         }.items())
