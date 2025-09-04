@@ -165,7 +165,8 @@ def generate_launch_description():
             'relaxed_dimension_check': True,
             'max_batch_size': 1,
         }],
-        remappings=[('tensor_input', '/tensor_pub')])
+        # Consume the encoder's NCHW planar tensor directly
+        remappings=[('tensor_input', '/yolov8_encoder/planar_tensor')])
 
     yolov8_decoder_node = ComposableNode(
         name='yolov8_decoder',
