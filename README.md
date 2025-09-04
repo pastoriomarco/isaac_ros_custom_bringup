@@ -48,8 +48,8 @@ ros2 launch isaac_ros_custom_bringup yolov8_foundationpose_realsense.launch.py \
 ### YOLOv8 → FoundationPose (Remote RealSense)
 ```bash
 ros2 launch isaac_ros_custom_bringup yolov8_foundationpose_realsense_remote.launch.py \
-  yolov8_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/td06_a.onnx \
-  yolov8_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/td06_a.plan \
+  yolov8_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/td06_c.onnx \
+  yolov8_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/td06_c.plan \
   input_tensor_names:='["input_tensor"]' input_binding_names:='["images"]' \
   output_tensor_names:='["output_tensor"]' output_binding_names:='["output0"]' \
   confidence_threshold:=0.25 nms_threshold:=0.45 num_classes:=1 \
