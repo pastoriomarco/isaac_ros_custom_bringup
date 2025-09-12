@@ -192,16 +192,43 @@ def generate_launch_description():
                     ('detection2_d', 'detection2_d')]
     )
 
+    # Create binary mask in network space (640x640 letterboxed)
     detection2_d_to_mask_node = ComposableNode(
         name='detection2_d_to_mask',
         package='isaac_ros_foundationpose',
         plugin='nvidia::isaac_ros::foundationpose::Detection2DToMask',
         parameters=[{
-            'mask_width': int(REALSENSE_IMAGE_WIDTH / REALSENSE_TO_YOLO_RATIO),
-            'mask_height': int(REALSENSE_IMAGE_HEIGHT / REALSENSE_TO_YOLO_RATIO),
+            # Build mask at the YOLO network input resolution (letterboxed)
+            'mask_width': YOLOV8_MODEL_INPUT,
+            'mask_height': YOLOV8_MODEL_INPUT,
         }],
         remappings=[('detection2_d', 'detection2_d'),
                     ('segmentation', 'yolov8_segmentation_small')])
+
+    # Remove the top/bottom letterbox padding from 640x640 -> 640x360
+    # For 1280x720 -> 640x640, the resized content is 640x360, so pad_top=pad_bottom=140
+    pad_vertical = int((YOLOV8_MODEL_INPUT - int(REALSENSE_IMAGE_HEIGHT / REALSENSE_TO_YOLO_RATIO)) / 2)
+    unletterbox_mask_node = ComposableNode(
+        name='unletterbox_mask',
+        package='isaac_ros_image_proc',
+        plugin='nvidia::isaac_ros::image_proc::CropNode',
+        parameters=[{
+            # Match YOLO network input (letterboxed)
+            'input_width': YOLOV8_MODEL_INPUT,
+            'input_height': YOLOV8_MODEL_INPUT,
+            # Desired unletterboxed region (content only)
+            'crop_width': int(REALSENSE_IMAGE_WIDTH / REALSENSE_TO_YOLO_RATIO),  # 640
+            'crop_height': int(REALSENSE_IMAGE_HEIGHT / REALSENSE_TO_YOLO_RATIO),  # 360
+            # Top-left of bbox inside the 640x640 letterboxed mask
+            'roi_top_left_x': 0,
+            'roi_top_left_y': pad_vertical,  # 140
+            'crop_mode': 'BBOX',
+            'encoding_desired': 'mono8',
+        }],
+        remappings=[('image', 'yolov8_segmentation_small'),
+                    ('camera_info', 'yolov8_encoder/resize/camera_info'),
+                    ('crop/image', 'yolov8_segmentation_small_unpadded'),
+                    ('crop/camera_info', 'yolov8_encoder/resize/camera_info')])
 
     resize_mask_node = ComposableNode(
         name='resize_mask_node',
@@ -217,7 +244,7 @@ def generate_launch_description():
             # Ensure mask encoding matches FoundationPose expectation
             'encoding_desired': 'mono8',
         }],
-        remappings=[('image', 'yolov8_segmentation_small'),
+        remappings=[('image', 'yolov8_segmentation_small_unpadded'),
                     ('camera_info', 'yolov8_encoder/resize/camera_info'),
                     ('resize/image', 'segmentation'),
                     ('resize/camera_info', 'camera_info_segmentation')])
@@ -313,6 +340,7 @@ def generate_launch_description():
             yolov8_decoder_node,
             detection2_d_array_filter_node,
             detection2_d_to_mask_node,
+            unletterbox_mask_node,
             resize_mask_node,
             selector_node,
             foundationpose_node,
