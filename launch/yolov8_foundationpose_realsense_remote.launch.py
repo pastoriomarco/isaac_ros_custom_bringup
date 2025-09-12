@@ -62,6 +62,11 @@ def generate_launch_description():
 
         # Optional tracking (enables selector + tracking together)
         DeclareLaunchArgument('enable_tracking', default_value='False'),
+
+        # FoundationPose orientation symmetry (list-like string)
+        # Example overrides:
+        #  symmetry_axes:="['x_180']" or "['x_full','z_180']"
+        DeclareLaunchArgument('symmetry_axes', default_value="['x_full']"),
     ]
 
     mesh_file_path = LaunchConfiguration('mesh_file_path')
@@ -87,6 +92,7 @@ def generate_launch_description():
     hawk_expect_freq = LaunchConfiguration('hawk_expect_freq')
     input_images_drop_freq = LaunchConfiguration('input_images_drop_freq')
     enable_tracking = LaunchConfiguration('enable_tracking')
+    symmetry_axes = LaunchConfiguration('symmetry_axes')
 
     # Drop nodes: choose based on depth encoding
     drop_node_uint16 = ComposableNode(
@@ -267,6 +273,7 @@ def generate_launch_description():
         parameters=[{
             'mesh_file_path': mesh_file_path,
             'texture_path': texture_path,
+            'symmetry_axes': symmetry_axes,
             'refine_model_file_path': refine_model_file_path,
             'refine_engine_file_path': refine_engine_file_path,
             'refine_input_tensor_names': ['input_tensor1', 'input_tensor2'],
@@ -295,6 +302,7 @@ def generate_launch_description():
         parameters=[{
             'mesh_file_path': mesh_file_path,
             'texture_path': texture_path,
+            'symmetry_axes': symmetry_axes,
             'refine_model_file_path': refine_model_file_path,
             'refine_engine_file_path': refine_engine_file_path,
             'refine_input_tensor_names': ['input_tensor1', 'input_tensor2'],
