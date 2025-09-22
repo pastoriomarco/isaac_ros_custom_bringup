@@ -321,9 +321,17 @@ def generate_launch_description():
             'score_output_tensor_names': ['output_tensor'],
             'score_output_binding_names': ['output1'],
         }],
-        # When tracking is enabled, let estimator subscribe to pose_estimation/* published by selector
-        # Keep output remap for convenience
-        remappings=[('pose_estimation/output', 'output')],
+        # Note: Using selector to gate estimation can be fragile with ExactTime sync.
+        # To keep output robust, still feed estimator from the direct RGB/depth/mask topics
+        # while remapping only the output for convenience. The selector will still receive
+        # pose_matrix_output to seed tracking.
+        remappings=[
+            ('pose_estimation/depth_image', 'depth_image'),
+            ('pose_estimation/image', 'rgb/image_rect_color'),
+            ('pose_estimation/camera_info', 'rgb/camera_info'),
+            ('pose_estimation/segmentation', 'segmentation'),
+            ('pose_estimation/output', 'output')
+        ],
         condition=IfCondition(enable_tracking))
 
     foundationpose_tracking_node = ComposableNode(
