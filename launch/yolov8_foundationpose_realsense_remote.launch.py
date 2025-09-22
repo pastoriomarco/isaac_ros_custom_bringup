@@ -266,7 +266,10 @@ def generate_launch_description():
                     ('segmentation', 'segmentation')],
         condition=IfCondition(enable_tracking))
 
-    foundationpose_node = ComposableNode(
+    # FoundationPoseNode (two variants):
+    # - Direct inputs (no selector), used when tracking is disabled
+    # - Via selector (pose_estimation/*), used when tracking is enabled
+    foundationpose_node_direct = ComposableNode(
         name='foundationpose_node',
         package='isaac_ros_foundationpose',
         plugin='nvidia::isaac_ros::foundationpose::FoundationPoseNode',
@@ -287,13 +290,41 @@ def generate_launch_description():
             'score_output_tensor_names': ['output_tensor'],
             'score_output_binding_names': ['output1'],
         }],
+        # Remap estimator to consume RGB/depth/mask directly when no selector exists
         remappings=[
             ('pose_estimation/depth_image', 'depth_image'),
             ('pose_estimation/image', 'rgb/image_rect_color'),
             ('pose_estimation/camera_info', 'rgb/camera_info'),
             ('pose_estimation/segmentation', 'segmentation'),
             ('pose_estimation/output', 'output')
-        ])
+        ],
+        condition=UnlessCondition(enable_tracking))
+
+    foundationpose_node_via_selector = ComposableNode(
+        name='foundationpose_node',
+        package='isaac_ros_foundationpose',
+        plugin='nvidia::isaac_ros::foundationpose::FoundationPoseNode',
+        parameters=[{
+            'mesh_file_path': mesh_file_path,
+            'texture_path': texture_path,
+            'symmetry_axes': symmetry_axes,
+            'refine_model_file_path': refine_model_file_path,
+            'refine_engine_file_path': refine_engine_file_path,
+            'refine_input_tensor_names': ['input_tensor1', 'input_tensor2'],
+            'refine_input_binding_names': ['input1', 'input2'],
+            'refine_output_tensor_names': ['output_tensor1', 'output_tensor2'],
+            'refine_output_binding_names': ['output1', 'output2'],
+            'score_model_file_path': score_model_file_path,
+            'score_engine_file_path': score_engine_file_path,
+            'score_input_tensor_names': ['input_tensor1', 'input_tensor2'],
+            'score_input_binding_names': ['input1', 'input2'],
+            'score_output_tensor_names': ['output_tensor'],
+            'score_output_binding_names': ['output1'],
+        }],
+        # When tracking is enabled, let estimator subscribe to pose_estimation/* published by selector
+        # Keep output remap for convenience
+        remappings=[('pose_estimation/output', 'output')],
+        condition=IfCondition(enable_tracking))
 
     foundationpose_tracking_node = ComposableNode(
         name='foundationpose_tracking_node',
@@ -351,7 +382,8 @@ def generate_launch_description():
             unletterbox_mask_node,
             resize_mask_node,
             selector_node,
-            foundationpose_node,
+            foundationpose_node_direct,
+            foundationpose_node_via_selector,
             foundationpose_tracking_node,
             resize_left_viz,
         ],
