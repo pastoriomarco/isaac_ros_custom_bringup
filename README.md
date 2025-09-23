@@ -85,25 +85,69 @@ Notes
 - Depth is converted from uint16 mm → float32 meters using `ConvertMetricNode`.
 - Detection2DToMask takes the highest‑score detection. For multiple instances, consider multiple FoundationPose nodes or a custom mask node.
 
+---
+
 ## Walkthrough YoloV8 only:
 
-#Follow instructions from 
-https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_object_detection/isaac_ros_yolov8/index.html
+**Follow instructions** from 
+[isaac_ros_object_detection GitHub repo for isaac_ros_yolov8](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_object_detection/isaac_ros_yolov8/index.html), but with the following **differences**:
 
-#Differences:
+### Download Quickstart Assets
 
-Download Quickstart Assets
-2. Use custom model instead
-3. The script in my custom sdg repo converts it automatically (ADD REFERENCE HERE), but it must be copied in 
-${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/ , and the commands must refer to it correctly if renamed
+#### Section 1.
+Download Quickstart Assets as instructed.
 
-Build isaac_ros_yolov8
-1. change the command:
-cd ${ISAAC_ROS_WS}/src && \
-   git clone -b release-3.2 https://github.com/pastoriomarco/isaac_ros_object_detection.git isaac_ros_object_detection
+#### Section 2. 
+***Use custom model*** instead of the default one.  
+To obtain a custom model, generate synthetic data with Isaac SIM and train your custom yolov8 following [the instructions in THIS REPO](https://github.com/pastoriomarco/sdg_training_custom.git).
 
-Run Launch File
-2. Use the following launchers or change accordingly
+#### Section 3.
+The [script](https://github.com/pastoriomarco/sdg_training_custom/blob/main/custom_sdg/custom_train_yolov8.sh) in my custom sdg repo converts the `.pt` model to `.onnx` automatically, but it should then be copied in `${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/`, and the commands must refer to its name correctly.
+
+If you interrupt the training of the model before the selected number of epochs, you'll skip the conversion too: you can still follow the original instructions to convert the best model obtained from the script.
+
+### Build isaac_ros_yolov8
+
+#### Use the Build from Source tab
+
+#### Section 1. 
+
+Clone the original repo, but also add my custom bringup. You might need isaac_ros_foundationpose's repo too for dependencies.  
+Here's the full sequence of command:
+```bash
+cd ${ISAAC_ROS_WS}/src
+git clone -b release-3.2 https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_object_detection.git isaac_ros_object_detection
+git clone -b release-3.2 https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_pose_estimation.git isaac_ros_pose_estimation
+git clone https://github.com/pastoriomarco/isaac_ros_custom_bringup.git
+```
+
+#### Section 2. to 5.
+
+Follow original instructions.
+
+### Run Launch File
+
+#### Section 1. 
+
+Enter the docker container:
+
+```bash
+cd ${ISAAC_ROS_WS}/src/isaac_ros_common && \
+   ./scripts/run_dev.sh
+```
+
+#### Rosbag tab
+
+##### Section 1.
+
+```bash
+sudo apt-get update && \
+sudo apt-get install -y ros-humble-isaac-ros-examples
+```
+
+##### Section 2.
+
+Use the following launchers or change accordingly
 
 #with engine update, model _a
 
@@ -139,4 +183,18 @@ ros2 launch isaac_ros_custom_bringup yolov8_inference.launch.py \
   nms_threshold:=0.5 
 ```
 
-4. Don't run the rosbag if you publish from Isaac SIM
+##### Section 3.
+
+```bash
+cd ${ISAAC_ROS_WS}/src/isaac_ros_common && \
+./scripts/run_dev.sh
+```
+
+##### Section 4. 
+If you **publish from Isaac SIM** skip this section and **don't run the rosbag** 
+
+### Visualize Results
+
+Follow original instructions
+
+---
