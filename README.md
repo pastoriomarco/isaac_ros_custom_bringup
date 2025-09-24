@@ -87,20 +87,22 @@ The following example requires all the required variables to be set correctly:
 export YOLO_MODEL_NAME=your_model_name
 export MESH_FILE_PATH=/path/to/your/object.obj
 export TEXTURE_PATH=/path/to/object/texture.png
-ros2 launch isaac_ros_custom_bringup yolov8_foundationpose_realsense.launch.py \
+ros2 launch isaac_ros_custom_bringup yolov8_foundationpose_realsense_remote.launch.py \
   yolov8_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/${YOLO_MODEL_NAME}.onnx \
   yolov8_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/${YOLO_MODEL_NAME}.plan \
-  input_tensor_names:='["input_tensor"]' \
-  input_binding_names:='["images"]' \
-  output_tensor_names:='["output_tensor"]' \
-  output_binding_names:='["output0"]' \
+  input_tensor_names:='["input_tensor"]' input_binding_names:='["images"]' \
+  output_tensor_names:='["output_tensor"]' output_binding_names:='["output0"]' \
   confidence_threshold:=0.25 nms_threshold:=0.45 num_classes:=1 \
   mesh_file_path:=${MESH_FILE_PATH} \
-  texture_path:= ${TEXTURE_PATH} \
+  texture_path:=${TEXTURE_PATH} \
   refine_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/refine_model.onnx \
   refine_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/refine_trt_engine.plan \
   score_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/score_model.onnx \
   score_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/score_trt_engine.plan \
+  remote_color_image_topic:=/image_rect \
+  remote_color_info_topic:=/camera_info \
+  remote_depth_aligned_topic:=/depth \
+  depth_is_float:=True \
   launch_rviz:=True
 ```
 
