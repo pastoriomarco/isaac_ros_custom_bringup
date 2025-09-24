@@ -1,5 +1,5 @@
-Isaac ROS YOLOv8 + FoundationPose Bringup
-=========================================
+Isaac ROS YOLOv8 + FoundationPose + Isaac SIM Bringup
+=====================================================
 
 This package provides standalone launch graphs to run a fine‑tuned YOLOv8 detector and wire it into the Isaac ROS FoundationPose pipeline using an Intel RealSense RGB‑D camera. It keeps upstream packages unmodified.
 
@@ -10,6 +10,11 @@ This package provides standalone launch graphs to run a fine‑tuned YOLOv8 dete
 Follow the instructions on [sdg_training_custom GitHub repo](https://github.com/pastoriomarco/sdg_training_custom).  
 
 **ATTENTION**: You need at least 16GB VRAM to run `isaac_ros_foundationpose`. I run the FoundationPose pipeline on a Jetson Orin AGX Developer Kit, then use a laptop with 8GB VRAM RTX GPU to stream Isaac SIM camera/scene simulation.
+The Isaac SIM scene needs to publish a RealSense camera stram with the following topics:
+
+- `remote_color_image_topic:=/image_rect` 
+- `remote_color_info_topic:=/camera_info` 
+- `remote_depth_aligned_topic:=/depth` 
 
 You will also need a `obj` model and a `png` texture as described in [isaac_ros_foundationpose tutorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/isaac_ros_foundationpose/#try-more-examples).
 
@@ -81,7 +86,8 @@ You'll need to complete the [isaac_ros_foundationpose tutorial](https://nvidia-i
 
 ### Step 7: Run example
 
-The following example requires all the required variables to be set correctly:
+**Start your Isaac SIM simulation** so it publishes the camera stream, then run the example below.  
+The example requires all the env variables to be set correctly:
 
 ```bash
 export YOLO_MODEL_NAME=your_model_name
