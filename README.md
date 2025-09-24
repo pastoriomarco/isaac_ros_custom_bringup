@@ -3,6 +3,111 @@ Isaac ROS YOLOv8 + FoundationPose Bringup
 
 This package provides standalone launch graphs to run a fine‑tuned YOLOv8 detector and wire it into the Isaac ROS FoundationPose pipeline using an Intel RealSense RGB‑D camera. It keeps upstream packages unmodified.
 
+## PREREQUISITES
+
+### Generate SDG and train model
+
+Follow the instructions on [sdg_training_custom GitHub repo](https://github.com/pastoriomarco/sdg_training_custom).  
+
+**ATTENTION**: You need at least 16GB VRAM to run `isaac_ros_foundationpose`. I run the FoundationPose pipeline on a Jetson Orin AGX Developer Kit, then use a laptop with 8GB VRAM RTX GPU to stream Isaac SIM camera/scene simulation.
+
+You will also need a `obj` model and a `png` texture as described in [isaac_ros_foundationpose tutorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/isaac_ros_foundationpose/#try-more-examples).
+
+## SETUP & LAUNCH
+
+### Step 1: Developer Environment Setup
+
+First, set up the compute and developer environment by following Nvidia’s instructions:
+
+* [Compute Setup](https://nvidia-isaac-ros.github.io/getting_started/hardware_setup/compute/index.html)
+* [Developer Environment Setup](https://nvidia-isaac-ros.github.io/getting_started/dev_env_setup.html)
+
+It’ very important that you completely follow the above setup steps for the platform you are going to use. Don’t skip the steps for [Jetson Platform](https://nvidia-isaac-ros.github.io/getting_started/hardware_setup/compute/index.html#jetson-platforms) if that’s what you are using, including [VPI](https://nvidia-isaac-ros.github.io/getting_started/hardware_setup/compute/jetson_vpi.html).
+
+### Step 2: Download and run the setup script
+
+Download [manymove_isaac_ros_startup.sh](https://github.com/pastoriomarco/manymove/blob/humble/manymove_planner/config/isaac_ros/manymove_isaac_ros_startup.sh), make it executable and run it. It will download all the packages tested with ManyMove and Isaac ROS.
+
+### Step 3: [OPTIONAL] Check isaac_ros_common-config
+
+Since I’m working with realsense cameras, the current config includes the realsense package.  
+**If you are using RealSense cameras too, *skip this step*.**
+
+If you don’t need it, modify the following file with your favorite editor:
+
+```
+${ISAAC_ROS_WS}/src/isaac_ros_common/scripts/.isaac_ros_common-config
+```
+
+Remove `.realsense` step from the config line. It will go from:
+
+```
+CONFIG_IMAGE_KEY=ros2_humble.realsense.manymove
+```
+
+To:
+
+```
+CONFIG_IMAGE_KEY=ros2_humble.manymove
+```
+
+### Step 4: Prepare YOLO model and object model
+
+You need to place the fine-tuned YOLOV8 model inside ${ISAAC_ROS_WS} folder for the docker environment to be able to access it.  
+Export the variables below to be able to use the example commands correctly.
+
+```bash
+export YOLO_MODEL_NAME=your_model_name
+mkdir -p ${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/
+cp /PATH/TO/YOUR/${YOLO_MODEL_NAME}.onnx ${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/
+```
+
+### Step 5: Launch the Docker container
+
+Launch the docker container using the `run_dev.sh` script:
+
+```
+cd ${ISAAC_ROS_WS}/src/isaac_ros_common && \
+   ./scripts/run_dev.sh
+```
+
+This will also build all the required packages.  
+**IMPORTANT**: if you want to rebuild, remove `/build`, `/install` and `/log` folders in `${ISAAC_ROS_WS}/` before launching the docker.
+
+### Step 6: Test Installation
+
+*From inside the container:*  
+You'll need to complete the [isaac_ros_foundationpose tutorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/isaac_ros_foundationpose/index.html#run-launch-file) and the [isaac_ros_yolov8 tutorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_object_detection/isaac_ros_yolov8/index.html#run-launch-file): on each, start from **`Run Launch File`** section, as once inside the docker container you'll already have the repos built from source.
+
+### Step 7: Run example
+
+The following example requires all the required variables to be set correctly:
+
+```bash
+export YOLO_MODEL_NAME=your_model_name
+export MESH_FILE_PATH=/path/to/your/object.obj
+export TEXTURE_PATH=/path/to/object/texture.png
+ros2 launch isaac_ros_custom_bringup yolov8_foundationpose_realsense.launch.py \
+  yolov8_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/${YOLO_MODEL_NAME}.onnx \
+  yolov8_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/${YOLO_MODEL_NAME}.plan \
+  input_tensor_names:='["input_tensor"]' \
+  input_binding_names:='["images"]' \
+  output_tensor_names:='["output_tensor"]' \
+  output_binding_names:='["output0"]' \
+  confidence_threshold:=0.25 nms_threshold:=0.45 num_classes:=1 \
+  mesh_file_path:=${MESH_FILE_PATH} \
+  texture_path:= ${TEXTURE_PATH} \
+  refine_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/refine_model.onnx \
+  refine_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/refine_trt_engine.plan \
+  score_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/score_model.onnx \
+  score_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/score_trt_engine.plan \
+  launch_rviz:=True
+```
+
+---
+
+## INFO
+
 ### Contents
 - `launch/yolov8_inference.launch.py`: YOLOv8 encoder → TensorRT → decoder (Detection2DArray)
 - `launch/yolov8_foundationpose_realsense.launch.py`: RealSense → encoder → YOLOv8 → Detection2DToMask → resize → FoundationPose (+ tracking)
@@ -18,8 +123,8 @@ source install/setup.bash
 Example with Ultralytics export defaults (`images`/`output0`):
 ```bash
 ros2 launch isaac_ros_custom_bringup yolov8_inference.launch.py \
-  model_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/yolov8/your_finetuned.onnx \
-  engine_file_path:='' \
+  model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/your_finetuned.onnx \
+  engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/your_finetuned.plan \
   input_tensor_names:='["input_tensor"]' \
   input_binding_names:='["images"]' \
   output_tensor_names:='["output_tensor"]' \
@@ -30,8 +135,8 @@ ros2 launch isaac_ros_custom_bringup yolov8_inference.launch.py \
 ### YOLOv8 → FoundationPose (RealSense)
 ```bash
 ros2 launch isaac_ros_custom_bringup yolov8_foundationpose_realsense.launch.py \
-  yolov8_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/td06_a.onnx \
-  yolov8_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/td06_a.plan \
+  yolov8_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/td06_d.onnx \
+  yolov8_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/td06_d.plan \
   input_tensor_names:='["input_tensor"]' \
   input_binding_names:='["images"]' \
   output_tensor_names:='["output_tensor"]' \
@@ -39,10 +144,10 @@ ros2 launch isaac_ros_custom_bringup yolov8_foundationpose_realsense.launch.py \
   confidence_threshold:=0.25 nms_threshold:=0.45 num_classes:=1 \
   mesh_file_path:=$HOME/meshes/workpiece.obj \
   texture_path:=$HOME/meshes/flat_gray.png \
-  refine_model_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/refine_model.onnx \
-  refine_engine_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/refine_trt_engine.plan \
-  score_model_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/score_model.onnx \
-  score_engine_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/score_trt_engine.plan \
+  refine_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/refine_model.onnx \
+  refine_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/refine_trt_engine.plan \
+  score_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/score_model.onnx \
+  score_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/score_trt_engine.plan \
   launch_rviz:=True
 ```
 ### YOLOv8 → FoundationPose (Remote RealSense)
@@ -53,12 +158,12 @@ ros2 launch isaac_ros_custom_bringup yolov8_foundationpose_realsense_remote.laun
   input_tensor_names:='["input_tensor"]' input_binding_names:='["images"]' \
   output_tensor_names:='["output_tensor"]' output_binding_names:='["output0"]' \
   confidence_threshold:=0.25 nms_threshold:=0.45 num_classes:=1 \
-  mesh_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/objects/TD06/TDNS06.obj \
-  texture_path:=$ISAAC_ROS_WS/isaac_ros_assets/objects/TD06/gray.png \
-  refine_model_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/refine_model.onnx \
-  refine_engine_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/refine_trt_engine.plan \
-  score_model_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/score_model.onnx \
-  score_engine_file_path:=$ISAAC_ROS_WS/isaac_ros_assets/models/foundationpose/score_trt_engine.plan \
+  mesh_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/objects/TD06/TDNS06.obj \
+  texture_path:=${ISAAC_ROS_WS}/isaac_ros_assets/objects/TD06/gray.png \
+  refine_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/refine_model.onnx \
+  refine_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/refine_trt_engine.plan \
+  score_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/score_model.onnx \
+  score_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/score_trt_engine.plan \
   remote_color_image_topic:=/image_rect \
   remote_color_info_topic:=/camera_info \
   remote_depth_aligned_topic:=/depth \
@@ -87,7 +192,7 @@ Notes
 
 ---
 
-## Walkthrough YoloV8 only:
+## YoloV8 only Walkthrough:
 
 **Follow instructions** from 
 [isaac_ros_object_detection GitHub repo for isaac_ros_yolov8](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_object_detection/isaac_ros_yolov8/index.html), but with the following **differences**:
