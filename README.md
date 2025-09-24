@@ -9,8 +9,10 @@ This package provides standalone launch graphs to run a fine‑tuned YOLOv8 dete
 
 Follow the instructions on [sdg_training_custom GitHub repo](https://github.com/pastoriomarco/sdg_training_custom).  
 
-**ATTENTION**: You need at least 16GB VRAM to run `isaac_ros_foundationpose`. I run the FoundationPose pipeline on a Jetson Orin AGX Developer Kit, then use a laptop with 8GB VRAM RTX GPU to stream Isaac SIM camera/scene simulation.
-The Isaac SIM scene needs to publish a RealSense camera stram with the following topics:
+**ATTENTION**: You need at least 16GB VRAM to run `isaac_ros_foundationpose`, ***plus*** the VRAM needed for Isaac SIM.  
+I run the FoundationPose pipeline on a `Jetson Orin AGX Developer Kit`, then use a laptop with 8GB VRAM RTX GPU to stream Isaac SIM camera/scene simulation.  
+
+The Isaac SIM scene needs to publish a RealSense camera stream with the following topics:
 
 - `remote_color_image_topic:=/image_rect` 
 - `remote_color_info_topic:=/camera_info` 
@@ -29,7 +31,9 @@ First, set up the compute and developer environment by following Nvidia’s inst
 
 It’ very important that you completely follow the above setup steps for the platform you are going to use. Don’t skip the steps for [Jetson Platform](https://nvidia-isaac-ros.github.io/getting_started/hardware_setup/compute/index.html#jetson-platforms) if that’s what you are using, including [VPI](https://nvidia-isaac-ros.github.io/getting_started/hardware_setup/compute/jetson_vpi.html).
 
-### Step 2: Download and run the setup script
+### Step 2: Download and run the `manymove_isaac_ros_startup.sh` setup script
+
+**WARNING**: before proceeding, if you already have your project in `${ISAAC_ROS_WS}` perform a backup and clean up the folder. The following script will download all the required packages for this pipeline, but it may fail if the folders are not empty. If you prefer to leave your `${ISAAC_ROS_WS}` as it is, inspect the contents of `manymove_isaac_ros_startup.sh` and run the commands manually.  
 
 Download [manymove_isaac_ros_startup.sh](https://github.com/pastoriomarco/manymove/blob/humble/manymove_planner/config/isaac_ros/manymove_isaac_ros_startup.sh), make it executable and run it. It will download all the packages tested with ManyMove and Isaac ROS.
 
@@ -38,7 +42,7 @@ Download [manymove_isaac_ros_startup.sh](https://github.com/pastoriomarco/manymo
 Since I’m working with realsense cameras, the current config includes the realsense package.  
 **If you are using RealSense cameras too, *skip this step*.**
 
-If you don’t need it, modify the following file with your favorite editor:
+If you don’t need it and want to spare the time needed to build it, modify the following file with your favorite editor:
 
 ```
 ${ISAAC_ROS_WS}/src/isaac_ros_common/scripts/.isaac_ros_common-config
