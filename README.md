@@ -1,7 +1,7 @@
 Isaac ROS YOLOv8 + FoundationPose + Isaac SIM Bringup
 =====================================================
 
-This package provides standalone launch graphs to run a fine‑tuned YOLOv8 detector and wire it into the Isaac ROS FoundationPose pipeline using an Intel RealSense RGB‑D camera. It keeps upstream packages unmodified.
+This package provides standalone launch graphs to run a fine‑tuned YOLOv8 detector and wire it into the Isaac ROS FoundationPose pipeline using a (real or simulated) Intel RealSense RGB‑D camera. It keeps upstream packages unmodified.
 
 ## PREREQUISITES
 
@@ -313,5 +313,17 @@ If you **publish from Isaac SIM** skip this section and **don't run the rosbag**
 ### Visualize Results
 
 Follow original instructions
+
+---
+
+## DISCLAIMER
+
+This package builds on and integrates software components from [NVIDIA’s Isaac ROS](https://nvidia-isaac-ros.github.io/index.html) and [Isaac SIM](https://docs.isaacsim.omniverse.nvidia.com/latest/index.html) platforms. All copyrights, trademarks, and ownership of the original software remain with NVIDIA Corporation.
+
+This tutorial and the associated launch files are **community-created** and are **not officially maintained, endorsed, or supported by NVIDIA**.
+
+It is intended to serve as a **reference and example** for combining Isaac ROS packages (e.g., YOLOv8, FoundationPose) and Isaac SIM in a practical perception pipeline. While care has been taken to test the setup, **there are no guarantees of correctness, completeness, or compatibility** with future Isaac ROS or Isaac SIM releases.
+
+Use this material **at your own discretion and risk**. For official documentation, support, and best practices, refer to the official NVIDIA documentation.
 
 ---

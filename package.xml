@@ -4,8 +4,8 @@
   <version>0.1.0</version>
   <description>Custom bringup package bundling YOLOv8 detection and Isaac ROS FoundationPose with RealSense RGB-D.</description>
 
-  <maintainer email="devnull@example.com">maintainer</maintainer>
-  <license>Apache-2.0</license>
+  <maintainer email="pastoriomarco@gmail.com">maintainer</maintainer>
+  <license>BSD-3-Clause</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
