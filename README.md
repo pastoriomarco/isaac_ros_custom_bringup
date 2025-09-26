@@ -168,6 +168,8 @@ You can try a pick and place pipeline that interacts with Isaac SIM and isaac_ro
 ros2 launch manymove_bringup lite_foundationpose_movegroup_fake_cpp_trees.launch.py
 ```
 
+You can see a video of the whole project running [HERE ON YOUTUBE](https://youtu.be/ezeS0r-Um3A)!
+
 ---
 
 ## INFO
