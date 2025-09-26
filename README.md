@@ -5,6 +5,8 @@ This package provides standalone launch graphs to run a fine‑tuned YOLOv8 dete
 
 ## PREREQUISITES
 
+To ensure you have everything needed to run the isaac_ros examples, and to correctly set the env variables needed, I strongly suggest you to complete the [isaac_ros_foundationpose tutorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/isaac_ros_foundationpose/index.html#run-launch-file) and the [isaac_ros_yolov8 tutorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_object_detection/isaac_ros_yolov8/index.html#run-launch-file) before following this tutorial. The original isaac_ros_foundationpose pipeline also requires [isaac_ros_rtdetr turorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_object_detection/isaac_ros_rtdetr/index.html#quickstart) to be completed.
+
 ### Generate SDG and train model
 
 Follow the instructions on [sdg_training_custom GitHub repo](https://github.com/pastoriomarco/sdg_training_custom).  
@@ -19,6 +21,18 @@ The Isaac SIM scene needs to publish a RealSense camera stream with the followin
 - `remote_depth_aligned_topic:=/depth` 
 
 You will also need a `obj` model and a `png` texture as described in [isaac_ros_foundationpose tutorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/isaac_ros_foundationpose/#try-more-examples).
+
+The [sdg_training_custom GitHub repo](https://github.com/pastoriomarco/sdg_training_custom) provides a full pipeline example using the assets in [isaac_sim_custom_examples](https://github.com/pastoriomarco/isaac_sim_custom_examples): if you follow that route you'll be able to run a full pipeline from start to finish. Once you complete the example pipeline you should have a trained model to use for isaac_ros_foundationpose; if you used all the default commands and paths, you can copy it in the right folder with this command:
+
+```bash
+export YOLO_MODEL_NAME=trocar_short
+mkdir -p ${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/
+cp ${HOME}/synthetic_out/yolo_runs/yolov8s_custom/weights/best.onnx ${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/${YOLO_MODEL_NAME}.onnx
+```
+
+**WARNING**: the sdg generation script of sdg_training_custom repo **will empty the output folder before proceeding**, be sure to **back up any data** if needed. On the other hand, if you restart the training script of sdg_training_custom repo with the default command it will not delete previous runs: adjust the command above to the right folder if you want to copy a model created from the second run on.
+
+You can customize the pipeline for you objects, for which you'll need to edit the commands according to the paths of the assets.
 
 ## SETUP & LAUNCH
 
@@ -60,18 +74,7 @@ To:
 CONFIG_IMAGE_KEY=ros2_humble.manymove
 ```
 
-### Step 4: Prepare YOLO model and object model
-
-You need to place the fine-tuned YOLOV8 model inside ${ISAAC_ROS_WS} folder for the docker environment to be able to access it.  
-Export the variables below to be able to use the example commands correctly.
-
-```bash
-export YOLO_MODEL_NAME=your_model_name
-mkdir -p ${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/
-cp /PATH/TO/YOUR/${YOLO_MODEL_NAME}.onnx ${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/
-```
-
-### Step 5: Launch the Docker container
+### Step 4: Launch the Docker container
 
 Launch the docker container using the `run_dev.sh` script:
 
@@ -83,15 +86,21 @@ cd ${ISAAC_ROS_WS}/src/isaac_ros_common && \
 This will also build all the required packages.  
 **IMPORTANT**: if you want to rebuild, remove `/build`, `/install` and `/log` folders in `${ISAAC_ROS_WS}/` before launching the docker.
 
-### Step 6: Test Installation
+### Step 5: Test Installation
 
 *From inside the container:*  
-You'll need to complete the [isaac_ros_foundationpose tutorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/isaac_ros_foundationpose/index.html#run-launch-file) and the [isaac_ros_yolov8 tutorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_object_detection/isaac_ros_yolov8/index.html#run-launch-file): on each, start from **`Run Launch File`** section, as once inside the docker container you'll already have the repos built from source.
+At this point you should be able to run the [isaac_ros_foundationpose tutorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/isaac_ros_foundationpose/index.html#run-launch-file) and the [isaac_ros_yolov8 tutorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_object_detection/isaac_ros_yolov8/index.html#run-launch-file): on each, start from **`Run Launch File`** section, as once inside the docker container you'll already have the repos built from source.
 
-### Step 7: Run example
+### Step 6: Run example
 
 **Start your Isaac SIM simulation** so it publishes the camera stream, then run the example below.  
-The example requires all the env variables to be set correctly:
+If you are following the example with the provided assets, you can open and start this scene:
+```
+${ISAAC_ROS_WS}/src/isaac_sim_custom_examples/test_scene_realsense_foundationpose_trocar.usd 
+```
+All the required files are in the same folder, and you can check out the OmniGraphs to publish the camera stream.
+
+The example requires all the env variables to be set correctly, so you need to **EDIT THE VARIABLES** according to your paths and file names:
 
 ```bash
 export YOLO_MODEL_NAME=your_model_name
@@ -114,6 +123,49 @@ ros2 launch isaac_ros_custom_bringup yolov8_foundationpose_realsense_remote.laun
   remote_depth_aligned_topic:=/depth \
   depth_is_float:=True \
   launch_rviz:=True
+```
+
+If you followed all the example pipeline from the [sdg_training_custom GitHub repo](https://github.com/pastoriomarco/sdg_training_custom), you should be able to run the following commands: 
+
+```bash
+export YOLO_MODEL_NAME=trocar_short
+export MESH_FILE_PATH=${ISAAC_ROS_WS}/src/isaac_sim_custom_examples/trocar_short.obj
+export TEXTURE_PATH=${ISAAC_ROS_WS}/src/isaac_sim_custom_examples/grey.png
+ros2 launch isaac_ros_custom_bringup yolov8_foundationpose_realsense_remote.launch.py \
+  yolov8_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/${YOLO_MODEL_NAME}.onnx \
+  yolov8_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/${YOLO_MODEL_NAME}.plan \
+  input_tensor_names:='["input_tensor"]' input_binding_names:='["images"]' \
+  output_tensor_names:='["output_tensor"]' output_binding_names:='["output0"]' \
+  confidence_threshold:=0.25 nms_threshold:=0.45 num_classes:=1 \
+  mesh_file_path:=${MESH_FILE_PATH} \
+  texture_path:=${TEXTURE_PATH} \
+  refine_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/refine_model.onnx \
+  refine_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/refine_trt_engine.plan \
+  score_model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/score_model.onnx \
+  score_engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose/score_trt_engine.plan \
+  remote_color_image_topic:=/image_rect \
+  remote_color_info_topic:=/camera_info \
+  remote_depth_aligned_topic:=/depth \
+  depth_is_float:=True \
+  launch_rviz:=True
+```
+
+### Step 7: control your robot with ManyMove and behavior trees!
+
+The install procedure also makes available the [ManyMove manipulation framework](https://github.com/pastoriomarco/manymove) to control your robot with behavior trees, leveragin MoveIt2 and BehaviorTree.CPP. Check out the repo for more info!
+
+If you want to give it a try, open a **new terminal**, start the container:
+
+```bash
+cd ${ISAAC_ROS_WS}/src/isaac_ros_common && \
+   ./scripts/run_dev.sh
+```
+
+You can try a pick and place pipeline that interacts with Isaac SIM and isaac_ros_foundationpose running this commands from inside the container:
+
+```bash
+. install/setup.bash
+ros2 launch manymove_bringup lite_foundationpose_movegroup_fake_cpp_trees.launch.py
 ```
 
 ---
