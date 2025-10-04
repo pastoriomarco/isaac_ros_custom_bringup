@@ -7,6 +7,11 @@ This package provides standalone launch graphs to run a fine‑tuned YOLOv8 dete
 
 To ensure you have everything needed to run the isaac_ros examples, and to correctly set the env variables needed, I strongly suggest you to complete the [isaac_ros_foundationpose tutorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/isaac_ros_foundationpose/index.html#run-launch-file) and the [isaac_ros_yolov8 tutorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_object_detection/isaac_ros_yolov8/index.html#run-launch-file) before following this tutorial. The original isaac_ros_foundationpose pipeline also requires [isaac_ros_rtdetr turorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_object_detection/isaac_ros_rtdetr/index.html#quickstart) to be completed.
 
+### ROS2 HUMBLE FULL PIPELINE:
+
+Please notice that the full pipeline is tested on Ubuntu 22.04 with ROS2 Humble and with inference on Jetson Orin AGX: the functionalities to run the ManyMove examples are not implemented in Jazzy branch yet.
+I'll be porting them in the near future, as soon as Orin is supported in Jetpack 7.x with Ubuntu 24.04.
+
 ### Generate SDG and train model
 
 Follow the instructions on [sdg_training_custom GitHub repo](https://github.com/pastoriomarco/sdg_training_custom).  
