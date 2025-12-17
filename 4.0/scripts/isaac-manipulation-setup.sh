@@ -3,7 +3,7 @@ set -euo pipefail
 
 show_usage() {
   cat <<'EOF'
-Usage: isaac-manipulation-setup.sh [--accept-eula|--show-eula] [--model-res <low_res|high_res>]
+Usage: isaac-manipulation-setup.sh [--accept-eula|--eula|--show-eula] [--model-res <low_res|high_res>]
 
 Downloads/converts the models + assets required by the Isaac Manipulation tutorials.
 
@@ -31,7 +31,7 @@ while [[ $# -gt 0 ]]; do
       EULA_MODE="accept"
       shift
       ;;
-    --show-eula|--eula)
+    --eula|--show-eula)
       EULA_MODE="show"
       shift
       ;;
@@ -71,7 +71,9 @@ esac
 
 eula_args=()
 if [[ "${EULA_MODE}" == "show" ]]; then
-  eula_args+=(--show-eula)
+  # Installer scripts documented in Isaac ROS use `--eula` (some also accept `--show-eula`).
+  # Pass the more widely supported flag downstream.
+  eula_args+=(--eula)
 fi
 
 # Support both workspace layouts:

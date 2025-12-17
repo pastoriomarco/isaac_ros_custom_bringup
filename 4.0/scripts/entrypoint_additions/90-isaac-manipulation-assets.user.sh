@@ -8,9 +8,8 @@ fi
 
 # Avoid blocking container startup with interactive prompts.
 if [[ -z "${ISAAC_ROS_ACCEPT_EULA:-}" ]]; then
-  echo "isaac-manipulation: auto-setup skipped (set ISAAC_ROS_ACCEPT_EULA=1 or run /usr/local/bin/isaac-manipulation-setup.sh --show-eula)"
+  echo "isaac-manipulation: auto-setup skipped (set ISAAC_ROS_ACCEPT_EULA=1 or run /usr/local/bin/isaac-manipulation-setup.sh --eula)"
   exit 0
 fi
 
 exec /usr/local/bin/isaac-manipulation-setup.sh --accept-eula
-

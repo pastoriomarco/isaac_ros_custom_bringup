@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Download and convert RT-DETR models to TensorRT engines
-# Models will be stored in the isaac_ros_assets directory
+# Download and convert FoundationPose models to TensorRT engines.
+# Models will be stored under: ${ISAAC_ROS_WS}/isaac_ros_assets/models/foundationpose
 # Setup paths
 if [ -n "$TENSORRT_COMMAND" ]; then
   # If a custom tensorrt is used, ensure it's lib directory is added to the LD_LIBRARY_PATH
@@ -26,7 +26,7 @@ if [ -z "$ISAAC_ROS_WS" ] && [ -n "$ISAAC_ROS_ASSET_MODEL_PATH" ]; then
 fi
 ASSET_NAME="foundationpose"
 MODELS_DIR="${ISAAC_ROS_WS}/isaac_ros_assets/models/${ASSET_NAME}"
-EULA_URL="https://catalog.ngc.nvidia.com/orgs/nvidia/teams/isaac/models/dnn_stereo_disparity"
+EULA_URL="https://catalog.ngc.nvidia.com/orgs/nvidia/teams/isaac/models/foundationpose"
 ASSET_DIR="${MODELS_DIR}"
 # Treat both ONNX + TensorRT engines as installed artifacts, so reruns only skip once everything is present.
 ASSET_INSTALL_PATHS="${ASSET_DIR}/refine_model.onnx ${ASSET_DIR}/score_model.onnx ${ASSET_DIR}/refine_trt_engine.plan ${ASSET_DIR}/score_trt_engine.plan"

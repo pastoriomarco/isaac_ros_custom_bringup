@@ -42,7 +42,7 @@ install the packages and perception models needed by the Isaac Manipulation tuto
 4. In the container, run the setup script once:
 
    ```bash
-   /usr/local/bin/isaac-manipulation-setup.sh --show-eula
+   /usr/local/bin/isaac-manipulation-setup.sh --eula
    ```
 
    Assets/models are installed under `${ISAAC_ROS_WS}/isaac_ros_assets` and installer scripts skip work if files
