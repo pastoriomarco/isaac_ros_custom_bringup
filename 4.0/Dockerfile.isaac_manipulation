@@ -1,0 +1,52 @@
+ARG BASE_IMAGE=ubuntu:24.04
+ARG ISAAC_MANIPULATION_LAYER_REV=2
+
+FROM ${BASE_IMAGE}
+
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+# Isaac Sim manipulation tutorials recommend CycloneDDS.
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
+# Cache-buster for this layer (so script changes get picked up by isaac-ros-cli's hash-based tags).
+RUN echo "isaac_manipulation layer rev: ${ISAAC_MANIPULATION_LAYER_REV}" >/dev/null
+
+# Install Isaac Manipulator binaries + a few common tutorial dependencies.
+RUN --mount=type=cache,target=/var/cache/apt \
+    apt-get update && apt-get install -y \
+        python3-git \
+        ros-jazzy-isaac-ros-examples \
+        ros-jazzy-isaac-manipulator-bringup \
+        ros-jazzy-isaac-ros-ess \
+        ros-jazzy-isaac-ros-ess-models-install \
+        ros-jazzy-isaac-ros-foundationstereo \
+        ros-jazzy-isaac-ros-foundationstereo-models-install \
+        ros-jazzy-isaac-ros-foundationpose \
+        ros-jazzy-isaac-ros-foundationpose-models-install \
+        ros-jazzy-isaac-ros-rtdetr \
+        ros-jazzy-isaac-ros-rtdetr-models-install \
+        ros-jazzy-isaac-ros-grounding-dino \
+        ros-jazzy-isaac-ros-grounding-dino-models-install \
+        ros-jazzy-isaac-ros-segment-anything \
+        ros-jazzy-isaac-ros-dope \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python deps used by tutorial/model setup utilities.
+# - segment-anything is required for PTH->ONNX conversion (x86 only).
+# - gdown is used to fetch DOPE weights.
+#
+# Note: We intentionally do not preinstall optional RL dependencies (e.g., tensordict/rsl-rl-lib)
+# here because some pip wheels attempt to upgrade apt-installed Python packages and fail during
+# container build (no RECORD files). Install them interactively if/when you need RL workflows.
+RUN python3 -m pip install --break-system-packages \
+        gdown \
+    && python3 -m pip install --break-system-packages --no-deps \
+        git+https://github.com/facebookresearch/segment-anything.git
+
+# Optional: auto-setup models/assets at container start via entrypoint additions.
+COPY scripts/isaac-manipulation-setup.sh /usr/local/bin/isaac-manipulation-setup.sh
+COPY scripts/entrypoint_additions/90-isaac-manipulation-assets.user.sh /usr/local/bin/scripts/entrypoint_additions/90-isaac-manipulation-assets.user.sh
+
+RUN chmod +x /usr/local/bin/isaac-manipulation-setup.sh \
+    /usr/local/bin/scripts/entrypoint_additions/90-isaac-manipulation-assets.user.sh
