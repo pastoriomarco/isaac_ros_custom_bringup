@@ -3,7 +3,7 @@ project(isaac_ros_custom_bringup)
 
 find_package(ament_cmake REQUIRED)
 
-install(DIRECTORY launch
+install(DIRECTORY isaac_ros_3/launch
   DESTINATION share/${PROJECT_NAME}
 )
 

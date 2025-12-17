@@ -134,4 +134,3 @@ def generate_launch_description():
         encoder_include,
         container
     ])
-
