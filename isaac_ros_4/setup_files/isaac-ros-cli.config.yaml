@@ -1,0 +1,11 @@
+# Isaac ROS CLI user config.
+#
+# This file is intended to be copied to:
+#   ~/.config/isaac-ros-cli/config.yaml
+
+docker:
+  image:
+    additional_image_keys:
+      - realsense
+      - isaac_manipulation
+

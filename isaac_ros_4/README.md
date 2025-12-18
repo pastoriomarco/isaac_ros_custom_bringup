@@ -3,6 +3,15 @@
 This folder contains a custom Isaac ROS CLI image layer (`Dockerfile.isaac_manipulation`) and helper scripts to
 install the packages and perception models needed by the Isaac Manipulation tutorials (Isaac Sim).
 
+## Prerequisites
+
+This README assumes your host is already set up with Isaac ROS CLI and GPU-enabled Docker as described in the Isaac ROS
+*Developer Environment Setup* docs, including:
+
+- `pip install termcolor --break-system-packages`
+- `sudo apt-get install isaac-ros-cli` and `sudo isaac-ros init docker`
+- Docker installed and NVIDIA Container Toolkit configured for Docker (for GPU access)
+
 ## What this layer does
 
 - Installs `ros-jazzy-isaac-manipulator-bringup` and the core Isaac ROS packages used by the manipulation
@@ -41,33 +50,42 @@ Keys under `components` gate the relevant downloads/installs during host prefetc
 
 ## How to use with `isaac-ros` CLI
 
-1. Make sure this directory is in the Isaac ROS CLI Dockerfile search path (`CONFIG_DOCKER_SEARCH_DIRS`).
-   The CLI reads this from the first `.isaac_ros_common-config` it finds. A convenient override is:
-
-   - `${ISAAC_ROS_WS}/../scripts/.isaac_ros_common-config`
-
-   Example contents:
+1. Clone this repo into your workspace:
 
    ```bash
-   CONFIG_DOCKER_SEARCH_DIRS=(/etc/isaac-ros-cli/docker ${ISAAC_ROS_WS}/docker ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4)
+   cd ${ISAAC_ROS_WS}/src
+   git clone https://github.com/pastoriomarco/isaac_ros_custom_bringup
    ```
 
-2. Add the image key to your Isaac ROS CLI config (e.g., `~/.config/isaac-ros-cli/config.yaml`):
+2. Create the Isaac ROS CLI helper files (recommended: run the bootstrap script):
 
-   ```yaml
-   docker:
-     image:
-       additional_image_keys:
-         - realsense
-         - isaac_manipulation
-   ```
-
-3. Optional (host): prefetch NGC quickstart assets **before** starting a dev container:
+   **WARNING**: update the helper files in this section according to your needs!
 
    ```bash
-   ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/scripts/prefetch_quickstart_assets_host.sh
-   # or (when running from the workspace root):
-   ./src/isaac_ros_custom_bringup/isaac_ros_4/scripts/prefetch_quickstart_assets_host.sh
+   bash ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/scripts/bootstrap_isaac_ros_cli_files.sh
+   ```
+
+   This script writes:
+   - `${ISAAC_ROS_WS}/../scripts/.isaac_ros_common-config` (from `src/isaac_ros_custom_bringup/isaac_ros_4/setup_files/.isaac_ros_common-config`)
+   - `~/.config/isaac-ros-cli/config.yaml` (from `src/isaac_ros_custom_bringup/isaac_ros_4/setup_files/isaac-ros-cli.config.yaml`)
+   - `~/.isaac_ros_dev-dockerargs` (from `src/isaac_ros_custom_bringup/isaac_ros_4/setup_files/.isaac_ros_dev-dockerargs`)
+
+   Manual copy (equivalent):
+
+   ```bash
+   mkdir -p ${ISAAC_ROS_WS}/../scripts
+   cp ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/setup_files/.isaac_ros_common-config ${ISAAC_ROS_WS}/../scripts/.isaac_ros_common-config
+
+   mkdir -p ~/.config/isaac-ros-cli
+   cp ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/setup_files/isaac-ros-cli.config.yaml ~/.config/isaac-ros-cli/config.yaml
+
+   cp ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/setup_files/.isaac_ros_dev-dockerargs ~/.isaac_ros_dev-dockerargs
+   ```
+
+3. Prefetch NGC quickstart assets **before** starting a dev container:
+
+   ```bash
+   bash ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/scripts/prefetch_quickstart_assets_host.sh
    ```
 
    This downloads and extracts `quickstart.tar.gz` bundles for enabled components in the config (defaults to all):
@@ -78,13 +96,26 @@ Keys under `components` gate the relevant downloads/installs during host prefetc
    - Idempotent by default; pass `--force` to re-download.
    - If `ISAAC_ROS_WS` is not set, the script infers it from its own location; or pass `--ws /path/to/isaac_ros_ws`.
 
-4. Build locally:
+5. Build locally:
 
    ```bash
    isaac-ros activate --build-local
    ```
 
-5. In the container, run the setup script once:
+## Optional: 
+
+### Disable running setup automatically at container start
+
+   At container start you will have to download and convert the models: the helper files are set to it's done automatically.
+
+   To disable, edit `~/.isaac_ros_dev-dockerargs` and set:
+
+   ```bash
+   -e ISAAC_ROS_MANIPULATION_AUTO_SETUP=0
+   -e ISAAC_ROS_ACCEPT_EULA=0
+   ```
+   
+   If you disable auto-setup, you can run it from inside the container with:
 
    ```bash
    /usr/local/bin/isaac-manipulation-setup.sh --eula
@@ -93,7 +124,7 @@ Keys under `components` gate the relevant downloads/installs during host prefetc
    Assets/models are installed under `${ISAAC_ROS_WS}/isaac_ros_assets` and installer scripts skip work if files
    already exist.
 
-## Optional: slim image builds
+### Slim image builds
 
 `Dockerfile.isaac_manipulation` supports build args to skip installing packages for disabled components:
 
@@ -108,21 +139,5 @@ Keys under `components` gate the relevant downloads/installs during host prefetc
 To derive these from the config file:
 
 ```bash
-./src/isaac_ros_custom_bringup/isaac_ros_4/scripts/print_docker_build_args_from_config.sh
-```
-
-## Optional: run setup automatically at container start
-
-Set both environment variables when launching the dev container:
-
-```bash
-export ISAAC_ROS_MANIPULATION_AUTO_SETUP=1
-export ISAAC_ROS_ACCEPT_EULA=1
-```
-
-You can inject env vars permanently via `~/.isaac_ros_dev-dockerargs` by adding:
-
-```bash
--e ISAAC_ROS_MANIPULATION_AUTO_SETUP=1
--e ISAAC_ROS_ACCEPT_EULA=1
+bash ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/scripts/print_docker_build_args_from_config.sh
 ```

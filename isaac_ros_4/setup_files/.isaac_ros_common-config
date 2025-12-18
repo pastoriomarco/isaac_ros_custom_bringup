@@ -1,0 +1,10 @@
+# Isaac ROS CLI common config (sourced by isaac-ros-cli).
+#
+# This adds this repo's `isaac_ros_4/` directory to the Dockerfile search path so that the CLI can find:
+#   - Dockerfile.isaac_manipulation
+#
+# Note: this file is intended to be copied to:
+#   ${ISAAC_ROS_WS}/../scripts/.isaac_ros_common-config
+
+CONFIG_DOCKER_SEARCH_DIRS=(/etc/isaac-ros-cli/docker ${ISAAC_ROS_WS}/docker ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4)
+
