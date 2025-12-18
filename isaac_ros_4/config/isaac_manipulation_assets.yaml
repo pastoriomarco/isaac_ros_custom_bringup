@@ -1,0 +1,33 @@
+schema_version: 1
+
+# Controls how the host-side quickstart asset bundles are selected from NGC.
+versioning:
+  quickstart_assets:
+    major: 4
+    # `latest`: always use the newest `MAJOR.MINOR.PATCH` available on NGC for this major.
+    # `pinned_minor`: stick to a specific minor (e.g., 4.0.x) and only float the patch.
+    mode: latest
+    minor: 0
+
+components:
+  ess:
+    enabled: true
+  foundationstereo:
+    enabled: true
+    # `model_res` controls which FoundationStereo model variant(s) are downloaded and converted in the container.
+    # Supported values:
+    #   - low_res: smaller/faster model (default)
+    #   - high_res: larger/slower model
+    #   - both: install/convert *both* low_res and high_res variants
+    #
+    # Note: this setting affects the *model install/conversion* step (container). The host-side NGC "quickstart" bundles
+    # are not resolution-specific.
+    model_res: low_res
+  foundationpose:
+    enabled: true
+  rtdetr:
+    enabled: true
+  grounding_dino:
+    enabled: true
+  manipulator_assets:
+    enabled: true

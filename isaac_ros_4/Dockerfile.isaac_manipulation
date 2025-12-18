@@ -1,7 +1,22 @@
 ARG BASE_IMAGE=ubuntu:24.04
 ARG ISAAC_MANIPULATION_LAYER_REV=2
+ARG ISAAC_MANIPULATION_ENABLE_ESS=1
+ARG ISAAC_MANIPULATION_ENABLE_FOUNDATIONSTEREO=1
+ARG ISAAC_MANIPULATION_ENABLE_FOUNDATIONPOSE=1
+ARG ISAAC_MANIPULATION_ENABLE_RTDETR=1
+ARG ISAAC_MANIPULATION_ENABLE_GROUNDING_DINO=1
+ARG ISAAC_MANIPULATION_ENABLE_MANIPULATOR_ASSETS=1
 
 FROM ${BASE_IMAGE}
+
+# Re-declare build args after FROM so they are available in this stage.
+ARG ISAAC_MANIPULATION_LAYER_REV=2
+ARG ISAAC_MANIPULATION_ENABLE_ESS=1
+ARG ISAAC_MANIPULATION_ENABLE_FOUNDATIONSTEREO=1
+ARG ISAAC_MANIPULATION_ENABLE_FOUNDATIONPOSE=1
+ARG ISAAC_MANIPULATION_ENABLE_RTDETR=1
+ARG ISAAC_MANIPULATION_ENABLE_GROUNDING_DINO=1
+ARG ISAAC_MANIPULATION_ENABLE_MANIPULATOR_ASSETS=1
 
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
@@ -14,23 +29,33 @@ RUN echo "isaac_manipulation layer rev: ${ISAAC_MANIPULATION_LAYER_REV}" >/dev/n
 
 # Install Isaac Manipulator binaries + a few common tutorial dependencies.
 RUN --mount=type=cache,target=/var/cache/apt \
-    apt-get update && apt-get install -y \
+    set -euo pipefail; \
+    apt-get update; \
+    pkgs=( \
         python3-git \
         ros-jazzy-isaac-ros-examples \
         ros-jazzy-isaac-manipulator-bringup \
-        ros-jazzy-isaac-ros-ess \
-        ros-jazzy-isaac-ros-ess-models-install \
-        ros-jazzy-isaac-ros-foundationstereo \
-        ros-jazzy-isaac-ros-foundationstereo-models-install \
-        ros-jazzy-isaac-ros-foundationpose \
-        ros-jazzy-isaac-ros-foundationpose-models-install \
-        ros-jazzy-isaac-ros-rtdetr \
-        ros-jazzy-isaac-ros-rtdetr-models-install \
-        ros-jazzy-isaac-ros-grounding-dino \
-        ros-jazzy-isaac-ros-grounding-dino-models-install \
-        ros-jazzy-isaac-ros-segment-anything \
-        ros-jazzy-isaac-ros-dope \
-    && rm -rf /var/lib/apt/lists/*
+    ); \
+    if [[ "${ISAAC_MANIPULATION_ENABLE_ESS:-1}" == "1" ]]; then \
+        pkgs+=(ros-jazzy-isaac-ros-ess ros-jazzy-isaac-ros-ess-models-install); \
+    fi; \
+    if [[ "${ISAAC_MANIPULATION_ENABLE_FOUNDATIONSTEREO:-1}" == "1" ]]; then \
+        pkgs+=(ros-jazzy-isaac-ros-foundationstereo ros-jazzy-isaac-ros-foundationstereo-models-install); \
+    fi; \
+    if [[ "${ISAAC_MANIPULATION_ENABLE_FOUNDATIONPOSE:-1}" == "1" ]]; then \
+        pkgs+=(ros-jazzy-isaac-ros-foundationpose ros-jazzy-isaac-ros-foundationpose-models-install); \
+    fi; \
+    if [[ "${ISAAC_MANIPULATION_ENABLE_RTDETR:-1}" == "1" ]]; then \
+        pkgs+=(ros-jazzy-isaac-ros-rtdetr ros-jazzy-isaac-ros-rtdetr-models-install); \
+    fi; \
+    if [[ "${ISAAC_MANIPULATION_ENABLE_GROUNDING_DINO:-1}" == "1" ]]; then \
+        pkgs+=(ros-jazzy-isaac-ros-grounding-dino ros-jazzy-isaac-ros-grounding-dino-models-install); \
+    fi; \
+    if [[ "${ISAAC_MANIPULATION_ENABLE_MANIPULATOR_ASSETS:-1}" == "1" ]]; then \
+        pkgs+=(ros-jazzy-isaac-ros-segment-anything ros-jazzy-isaac-ros-dope); \
+    fi; \
+    apt-get install -y "${pkgs[@]}"; \
+    rm -rf /var/lib/apt/lists/*
 
 # Python deps used by tutorial/model setup utilities.
 # - segment-anything is required for PTH->ONNX conversion (x86 only).
@@ -47,6 +72,7 @@ RUN python3 -m pip install --break-system-packages \
 # Optional: auto-setup models/assets at container start via entrypoint additions.
 COPY scripts/isaac-manipulation-setup.sh /usr/local/bin/isaac-manipulation-setup.sh
 COPY scripts/entrypoint_additions/90-isaac-manipulation-assets.user.sh /usr/local/bin/scripts/entrypoint_additions/90-isaac-manipulation-assets.user.sh
+COPY config/isaac_manipulation_assets.yaml /usr/local/share/isaac-manipulation/isaac_manipulation_assets.yaml
 
 RUN chmod +x /usr/local/bin/isaac-manipulation-setup.sh \
     /usr/local/bin/scripts/entrypoint_additions/90-isaac-manipulation-assets.user.sh
