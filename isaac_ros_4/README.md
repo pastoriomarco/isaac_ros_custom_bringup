@@ -8,9 +8,14 @@ install the packages and perception models needed by the Isaac Manipulation tuto
 This README assumes your host is already set up with Isaac ROS CLI and GPU-enabled Docker as described in the Isaac ROS
 *Developer Environment Setup* docs, including:
 
-- `pip install termcolor --break-system-packages`
-- `sudo apt-get install isaac-ros-cli` and `sudo isaac-ros init docker`
-- Docker installed and NVIDIA Container Toolkit configured for Docker (for GPU access)
+- [Getting Started](https://nvidia-isaac-ros.github.io/getting_started/index.html)
+- [Isaac ROS Development Environment](https://nvidia-isaac-ros.github.io/concepts/dev_env/index.html)
+- [Compute Setup](https://nvidia-isaac-ros.github.io/concepts/dev_env/index.html)
+- [Sensors Setup](https://nvidia-isaac-ros.github.io/getting_started/sensors/index.html)
+
+For Thor also check:
+- [Quick Start Guide](https://docs.nvidia.com/jetson/agx-thor-devkit/user-guide/latest/quick_start.html)
+- [Docker Setup](https://docs.nvidia.com/jetson/agx-thor-devkit/user-guide/latest/setup_docker.html)
 
 ## What this layer does
 
@@ -114,7 +119,7 @@ Keys under `components` gate the relevant downloads/installs during host prefetc
    -e ISAAC_ROS_MANIPULATION_AUTO_SETUP=0
    -e ISAAC_ROS_ACCEPT_EULA=0
    ```
-   
+
    If you disable auto-setup, you can run it from inside the container with:
 
    ```bash
