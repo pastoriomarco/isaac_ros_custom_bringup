@@ -28,15 +28,16 @@ setup script can be driven by a YAML config:
   - Host prefetch reads this file.
   - The Docker layer copies it into the image at `/usr/local/share/isaac-manipulation/isaac_manipulation_assets.yaml` for in-container setup.
 
-Keys under `components` gate both the corresponding quickstart asset bundle (host) and the corresponding model install
-(container):
+Keys under `components` gate the relevant downloads/installs during host prefetch and in-container setup:
 
 - `ess`
 - `foundationstereo` (also supports `model_res`: `low_res`/`high_res`/`both`)
-- `foundationpose`
+- `foundationpose` (also downloads sample object mesh/texture assets via `setup_perception_models.py`)
 - `rtdetr`
 - `grounding_dino`
-- `manipulator_assets` (DOPE weights, Segment Anything conversion, sample objects via `setup_perception_models.py`)
+- `dope` (downloads DOPE weights via `setup_perception_models.py`)
+- `segment_anything` (downloads SAM checkpoint/assets + performs PTH->ONNX conversion via `setup_perception_models.py` on x86)
+- `gear_assembly` (downloads UR DNN Policy assets for gear assembly via `setup_perception_models.py`)
 
 ## How to use with `isaac-ros` CLI
 
@@ -101,7 +102,8 @@ Keys under `components` gate both the corresponding quickstart asset bundle (hos
 - `ISAAC_MANIPULATION_ENABLE_FOUNDATIONPOSE`
 - `ISAAC_MANIPULATION_ENABLE_RTDETR`
 - `ISAAC_MANIPULATION_ENABLE_GROUNDING_DINO`
-- `ISAAC_MANIPULATION_ENABLE_MANIPULATOR_ASSETS`
+- `ISAAC_MANIPULATION_ENABLE_SEGMENT_ANYTHING`
+- `ISAAC_MANIPULATION_ENABLE_DOPE`
 
 To derive these from the config file:
 

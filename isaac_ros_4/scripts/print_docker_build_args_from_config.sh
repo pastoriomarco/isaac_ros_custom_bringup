@@ -100,7 +100,7 @@ except Exception:
     raise SystemExit(0)
 
 components = cfg.get("components", {})
-value = components.get(component, True)
+value = components.get(component, False)
 
 if isinstance(value, bool):
     enabled = value
@@ -253,7 +253,8 @@ cat <<EOF
 --build-arg ISAAC_MANIPULATION_ENABLE_FOUNDATIONPOSE=$(enabled_or_zero foundationpose)
 --build-arg ISAAC_MANIPULATION_ENABLE_RTDETR=$(enabled_or_zero rtdetr)
 --build-arg ISAAC_MANIPULATION_ENABLE_GROUNDING_DINO=$(enabled_or_zero grounding_dino)
---build-arg ISAAC_MANIPULATION_ENABLE_MANIPULATOR_ASSETS=$(enabled_or_zero manipulator_assets)
+--build-arg ISAAC_MANIPULATION_ENABLE_SEGMENT_ANYTHING=$(enabled_or_zero segment_anything)
+--build-arg ISAAC_MANIPULATION_ENABLE_DOPE=$(enabled_or_zero dope)
 EOF
 
 print_component_params_as_build_args "${CFG_PATH}"

@@ -123,7 +123,7 @@ except Exception as e:
     raise SystemExit(2)
 
 components = cfg.get("components", {})
-value = components.get(component, True)
+value = components.get(component, False)
 
 if isinstance(value, bool):
     enabled = value
@@ -381,25 +381,45 @@ else
   echo "==> Grounding DINO models: disabled by config (grounding_dino) (skipping)"
 fi
 
-# Downloads sample object assets + DOPE weights + Segment Anything assets and performs SAM PTH->ONNX conversion (x86).
-if [[ "$(component_enabled "${CFG_PATH}" "manipulator_assets")" == "1" ]]; then
+# Downloads tutorial assets and model weights used by Isaac for Manipulation workflows.
+#
+# This is controlled per-component (no generic "assets" toggle):
+# - foundationpose: sample object mesh/texture assets
+# - dope: DOPE weights
+# - segment_anything: SAM checkpoint + conversion/assets
+# - gear_assembly: UR DNN Policy assets for gear assembly
+perception_models=()
+if [[ "$(component_enabled "${CFG_PATH}" "foundationpose")" == "1" ]]; then
+  perception_models+=(foundationpose)
+fi
+if [[ "$(component_enabled "${CFG_PATH}" "dope")" == "1" ]]; then
+  perception_models+=(dope)
+fi
+if [[ "$(component_enabled "${CFG_PATH}" "segment_anything")" == "1" ]]; then
+  perception_models+=(segment_anything)
+fi
+if [[ "$(component_enabled "${CFG_PATH}" "gear_assembly")" == "1" ]]; then
+  perception_models+=(gear_assembly)
+fi
+
+if [[ ${#perception_models[@]} -gt 0 ]]; then
   if ros2 pkg prefix isaac_manipulator_asset_bringup >/dev/null 2>&1; then
-    run_or_die "Manipulation perception assets (downloads + verification) (ros2 run)" \
-      ros2 run isaac_manipulator_asset_bringup setup_perception_models.py --models all
+    run_or_die "Manipulation tutorial assets (downloads + verification) (ros2 run)" \
+      ros2 run isaac_manipulator_asset_bringup setup_perception_models.py --models "${perception_models[@]}"
   elif [[ -n "${setup_perception_models_src}" ]] && [[ -f "${setup_perception_models_src}" ]]; then
     # Best-effort: run from source if the python deps are present in the workspace.
     if [[ -n "${src_root}" ]] && [[ -d "${src_root}/isaac_ros_common/isaac_common_py" ]]; then
       export PYTHONPATH="${src_root}/isaac_ros_common/isaac_common_py:${PYTHONPATH:-}"
     fi
-    run_or_die "Manipulation perception assets (downloads + verification) (python)" \
-      python3 "${setup_perception_models_src}" --models all
+    run_or_die "Manipulation tutorial assets (downloads + verification) (python)" \
+      python3 "${setup_perception_models_src}" --models "${perception_models[@]}"
   else
     echo "WARNING: Couldn't find isaac_manipulator_asset_bringup. Skipping setup_perception_models.py." >&2
     echo "         Install the package (binary) or build your workspace, then re-run this script." >&2
   fi
 else
   echo
-  echo "==> Manipulation perception assets: disabled by config (manipulator_assets) (skipping)"
+  echo "==> Manipulation tutorial assets: all disabled by config (skipping)"
 fi
 
 echo

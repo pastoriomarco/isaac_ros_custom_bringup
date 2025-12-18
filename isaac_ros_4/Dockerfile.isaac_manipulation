@@ -5,7 +5,8 @@ ARG ISAAC_MANIPULATION_ENABLE_FOUNDATIONSTEREO=1
 ARG ISAAC_MANIPULATION_ENABLE_FOUNDATIONPOSE=1
 ARG ISAAC_MANIPULATION_ENABLE_RTDETR=1
 ARG ISAAC_MANIPULATION_ENABLE_GROUNDING_DINO=1
-ARG ISAAC_MANIPULATION_ENABLE_MANIPULATOR_ASSETS=1
+ARG ISAAC_MANIPULATION_ENABLE_SEGMENT_ANYTHING=1
+ARG ISAAC_MANIPULATION_ENABLE_DOPE=1
 
 FROM ${BASE_IMAGE}
 
@@ -16,7 +17,8 @@ ARG ISAAC_MANIPULATION_ENABLE_FOUNDATIONSTEREO=1
 ARG ISAAC_MANIPULATION_ENABLE_FOUNDATIONPOSE=1
 ARG ISAAC_MANIPULATION_ENABLE_RTDETR=1
 ARG ISAAC_MANIPULATION_ENABLE_GROUNDING_DINO=1
-ARG ISAAC_MANIPULATION_ENABLE_MANIPULATOR_ASSETS=1
+ARG ISAAC_MANIPULATION_ENABLE_SEGMENT_ANYTHING=1
+ARG ISAAC_MANIPULATION_ENABLE_DOPE=1
 
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
@@ -51,8 +53,11 @@ RUN --mount=type=cache,target=/var/cache/apt \
     if [[ "${ISAAC_MANIPULATION_ENABLE_GROUNDING_DINO:-1}" == "1" ]]; then \
         pkgs+=(ros-jazzy-isaac-ros-grounding-dino ros-jazzy-isaac-ros-grounding-dino-models-install); \
     fi; \
-    if [[ "${ISAAC_MANIPULATION_ENABLE_MANIPULATOR_ASSETS:-1}" == "1" ]]; then \
-        pkgs+=(ros-jazzy-isaac-ros-segment-anything ros-jazzy-isaac-ros-dope); \
+    if [[ "${ISAAC_MANIPULATION_ENABLE_SEGMENT_ANYTHING:-1}" == "1" ]]; then \
+        pkgs+=(ros-jazzy-isaac-ros-segment-anything); \
+    fi; \
+    if [[ "${ISAAC_MANIPULATION_ENABLE_DOPE:-1}" == "1" ]]; then \
+        pkgs+=(ros-jazzy-isaac-ros-dope); \
     fi; \
     apt-get install -y "${pkgs[@]}"; \
     rm -rf /var/lib/apt/lists/*
@@ -64,10 +69,13 @@ RUN --mount=type=cache,target=/var/cache/apt \
 # Note: We intentionally do not preinstall optional RL dependencies (e.g., tensordict/rsl-rl-lib)
 # here because some pip wheels attempt to upgrade apt-installed Python packages and fail during
 # container build (no RECORD files). Install them interactively if/when you need RL workflows.
-RUN python3 -m pip install --break-system-packages \
-        gdown \
-    && python3 -m pip install --break-system-packages --no-deps \
-        git+https://github.com/facebookresearch/segment-anything.git
+RUN set -euo pipefail; \
+    if [[ "${ISAAC_MANIPULATION_ENABLE_DOPE:-1}" == "1" ]]; then \
+        python3 -m pip install --break-system-packages gdown; \
+    fi; \
+    if [[ "${ISAAC_MANIPULATION_ENABLE_SEGMENT_ANYTHING:-1}" == "1" ]]; then \
+        python3 -m pip install --break-system-packages --no-deps git+https://github.com/facebookresearch/segment-anything.git; \
+    fi
 
 # Optional: auto-setup models/assets at container start via entrypoint additions.
 COPY scripts/isaac-manipulation-setup.sh /usr/local/bin/isaac-manipulation-setup.sh

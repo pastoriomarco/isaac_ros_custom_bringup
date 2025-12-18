@@ -25,9 +25,16 @@ components:
     model_res: low_res
   foundationpose:
     enabled: true
+    # When enabled, this layer also installs FoundationPose sample object assets (mesh/texture) used by tutorials
+    # via `isaac_manipulator_asset_bringup/setup_perception_models.py` (e.g., the "Mac and Cheese" object).
   rtdetr:
     enabled: true
   grounding_dino:
     enabled: true
-  manipulator_assets:
-    enabled: true
+  # Extra tutorial assets installed via `isaac_manipulator_asset_bringup/setup_perception_models.py`.
+  dope:
+    enabled: false
+  segment_anything:
+    enabled: false
+  gear_assembly:
+    enabled: false

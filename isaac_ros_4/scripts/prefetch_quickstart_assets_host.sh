@@ -119,7 +119,7 @@ except Exception as e:
     raise SystemExit(2)
 
 components = cfg.get("components", {})
-value = components.get(component, True)
+value = components.get(component, False)
 
 if isinstance(value, bool):
     enabled = value
