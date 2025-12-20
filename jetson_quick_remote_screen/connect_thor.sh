@@ -53,34 +53,69 @@ fi
 SOCK="/tmp/vnc-${JETSON_HOST}.sock"
 REMOTE_PID_FILE="/tmp/x11vnc-${JETSON_USER}.pid"
 
+ssh_master_opts=(
+  -S "$SOCK"
+  -o ControlMaster=auto
+  -o ControlPersist=yes
+  -o LogLevel=ERROR
+)
+
+ssh_no_prompt_opts=(
+  -o BatchMode=yes
+  -o ConnectTimeout=2
+  -o ConnectionAttempts=1
+)
+
+timeout_cmd=()
+if command -v timeout >/dev/null 2>&1; then
+  timeout_cmd=(timeout 3)
+fi
+
+ssh_master_is_alive() {
+  "${timeout_cmd[@]}" ssh "${ssh_master_opts[@]}" "${ssh_no_prompt_opts[@]}" -O check "${JETSON_USER}@${JETSON_HOST}" >/dev/null 2>&1
+}
+
 cleanup() {
   echo "[*] Cleaning up..."
 
-  if [ -S "$SOCK" ]; then
+  if ssh_master_is_alive; then
     # Stop remote x11vnc via the same master connection
-    ssh -o BatchMode=yes -S "$SOCK" "${JETSON_USER}@${JETSON_HOST}" \
+    "${timeout_cmd[@]}" ssh "${ssh_master_opts[@]}" "${ssh_no_prompt_opts[@]}" "${JETSON_USER}@${JETSON_HOST}" \
       "if [ -f '$REMOTE_PID_FILE' ]; then
           pid=\$(cat '$REMOTE_PID_FILE' 2>/dev/null || true);
-          if [ -n \"\$pid\" ]; then kill \"\$pid\" >/dev/null 2>&1 || true; fi;
+          if [ -n \"\$pid\" ]; then
+            kill \"\$pid\" >/dev/null 2>&1 || sudo -n kill \"\$pid\" >/dev/null 2>&1 || true;
+          fi;
           rm -f '$REMOTE_PID_FILE' >/dev/null 2>&1 || true;
-       fi" >/dev/null 2>&1 || true
+       fi
+       pkill -x x11vnc >/dev/null 2>&1 || sudo -n pkill -x x11vnc >/dev/null 2>&1 || true" >/dev/null 2>&1 || true
 
     # Close master (also closes tunnel)
-    ssh -o BatchMode=yes -S "$SOCK" -O exit "${JETSON_USER}@${JETSON_HOST}" >/dev/null 2>&1 || true
-    rm -f "$SOCK" >/dev/null 2>&1 || true
-  else
-    rm -f "$SOCK" >/dev/null 2>&1 || true
+    "${timeout_cmd[@]}" ssh "${ssh_master_opts[@]}" "${ssh_no_prompt_opts[@]}" -O exit "${JETSON_USER}@${JETSON_HOST}" >/dev/null 2>&1 || true
   fi
+
+  rm -f "$SOCK" >/dev/null 2>&1 || true
 
   echo "[*] Done."
 }
 trap cleanup EXIT INT TERM
 
 echo "[*] Opening master SSH connection (you should authenticate once)..."
-ssh -M -S "$SOCK" -o ControlPersist=yes -fN "${JETSON_USER}@${JETSON_HOST}"
+if ssh_master_is_alive; then
+  echo "[*] Reusing existing SSH master at ${SOCK}..."
+else
+  rm -f "$SOCK" >/dev/null 2>&1 || true
+  ssh -M -S "$SOCK" \
+    -o ControlPersist=yes \
+    -o ServerAliveInterval=2 \
+    -o ServerAliveCountMax=1 \
+    -o ExitOnForwardFailure=yes \
+    -L "${LOCAL_PORT}:127.0.0.1:${REMOTE_PORT}" \
+    -fN "${JETSON_USER}@${JETSON_HOST}"
+fi
 
 echo "[*] Starting remote x11vnc on Thor (${JETSON_HOST})..."
-ssh -S "$SOCK" "${JETSON_USER}@${JETSON_HOST}" "bash -lc '
+ssh "${ssh_master_opts[@]}" "${ssh_no_prompt_opts[@]}" "${JETSON_USER}@${JETSON_HOST}" "bash -lc '
   set -e
   pkill -x x11vnc >/dev/null 2>&1 || true
 
@@ -97,21 +132,16 @@ ssh -S "$SOCK" "${JETSON_USER}@${JETSON_HOST}" "bash -lc '
     RUN_AS_USER=\"root\"
   fi
 
-  if [ \"\$RUN_AS_USER\" = \"root\" ]; then
-    sudo env \
-      DISPLAY=:0 \
-      XAUTHLOCALHOSTNAME=localhost \
+	  if [ \"\$RUN_AS_USER\" = \"root\" ]; then
+	    sudo bash -lc \"env DISPLAY=:0 XAUTHLOCALHOSTNAME=localhost nohup x11vnc \$AUTH_ARG -display :0 -localhost -forever -noxdamage -nopw -rfbport ${REMOTE_PORT} >/tmp/x11vnc.log 2>&1 & echo \\\$! > ${REMOTE_PID_FILE}\"
+	  else
+	    env \
+	      DISPLAY=:0 \
+	      XAUTHORITY=/home/${JETSON_USER}/.Xauthority \
       nohup x11vnc \$AUTH_ARG -display :0 -localhost -forever -noxdamage -nopw -rfbport ${REMOTE_PORT} \
         >/tmp/x11vnc.log 2>&1 &
-  else
-    sudo -u ${JETSON_USER} env \
-      DISPLAY=:0 \
-      XAUTHORITY=/home/${JETSON_USER}/.Xauthority \
-      nohup x11vnc \$AUTH_ARG -display :0 -localhost -forever -noxdamage -nopw -rfbport ${REMOTE_PORT} \
-        >/tmp/x11vnc.log 2>&1 &
+    echo \$! > ${REMOTE_PID_FILE}
   fi
-
-  echo \$! > ${REMOTE_PID_FILE}
   sleep 0.5
   pid=\$(cat ${REMOTE_PID_FILE})
   if ! kill -0 \"\$pid\" >/dev/null 2>&1; then
@@ -121,12 +151,6 @@ ssh -S "$SOCK" "${JETSON_USER}@${JETSON_HOST}" "bash -lc '
   fi
   echo \"[remote] x11vnc pid=\$pid\"
 '"
-
-echo "[*] Creating tunnel on the same master connection..."
-ssh -S "$SOCK" -fN -T \
-  -o ExitOnForwardFailure=yes \
-  -L "${LOCAL_PORT}:127.0.0.1:${REMOTE_PORT}" \
-  "${JETSON_USER}@${JETSON_HOST}"
 
 echo "[*] Waiting for VNC server to be ready..."
 ready=""
