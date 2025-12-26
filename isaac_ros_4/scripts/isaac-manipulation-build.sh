@@ -18,6 +18,17 @@ fi
 INSTALL_SETUP="${ISAAC_ROS_WS}/install/setup.bash"
 FORCE_BUILD="${ISAAC_ROS_MANIPULATION_FORCE_BUILD:-0}"
 
+if [[ -d "${HOME}/.gitconfig" ]]; then
+  fallback_gitconfig="${HOME}/.config/git/config"
+  if [[ -f "${fallback_gitconfig}" ]]; then
+    export GIT_CONFIG_GLOBAL="${fallback_gitconfig}"
+    log "WARNING: ${HOME}/.gitconfig is a directory; using ${fallback_gitconfig} via GIT_CONFIG_GLOBAL."
+  else
+    export GIT_CONFIG_GLOBAL="/dev/null"
+    log "WARNING: ${HOME}/.gitconfig is a directory; disabling global git config with GIT_CONFIG_GLOBAL=/dev/null."
+  fi
+fi
+
 if ! command -v vcs >/dev/null 2>&1; then
   echo "ERROR: vcstool not found. Install python3-vcstool in the image." >&2
   exit 1
