@@ -36,5 +36,7 @@ components:
     enabled: false
   segment_anything:
     enabled: false
+  segment_anything2:
+    enabled: false
   gear_assembly:
     enabled: false

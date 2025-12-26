@@ -225,14 +225,26 @@ if [[ -z "${ISAAC_ROS_WS:-}" ]]; then
   exit 1
 fi
 
+ASSET_MARKER="${ISAAC_ROS_WS}/isaac_ros_assets/.isaac_manipulation_assets_ready"
+if [[ "${ISAAC_ROS_MANIPULATION_FORCE_ASSET_SETUP:-0}" != "1" && -f "${ASSET_MARKER}" ]]; then
+  echo "Assets already prepared (${ASSET_MARKER}); skipping."
+  exit 0
+fi
+
+# Ensure `ros2` and installed packages are on PATH for non-interactive shells.
+#
+# NOTE: This script runs with `set -u`; some ROS setup files reference optional env vars
+# (e.g., AMENT_TRACE_SETUP_FILES) that may be unset. Temporarily disable nounset.
 if [[ -f "/opt/ros/${ROS_DISTRO:-jazzy}/setup.bash" ]]; then
-  # Ensure `ros2` and installed packages are on PATH for non-interactive shells.
-  #
-  # NOTE: This script runs with `set -u`; some ROS setup files reference optional env vars
-  # (e.g., AMENT_TRACE_SETUP_FILES) that may be unset. Temporarily disable nounset.
   set +u
   # shellcheck disable=SC1090
   source "/opt/ros/${ROS_DISTRO:-jazzy}/setup.bash"
+  set -u
+fi
+if [[ -f "${ISAAC_ROS_WS}/install/setup.bash" ]]; then
+  set +u
+  # shellcheck disable=SC1090
+  source "${ISAAC_ROS_WS}/install/setup.bash"
   set -u
 fi
 
@@ -332,6 +344,29 @@ if [[ -n "${src_root}" ]]; then
   setup_perception_models_src="${src_root}/isaac_manipulator/isaac_manipulator_asset_bringup/scripts/setup_perception_models.py"
 fi
 
+ensure_python_module() {
+  local module="$1"
+  local install_cmd="$2"
+
+  if python3 - <<PY >/dev/null 2>&1
+import importlib
+importlib.import_module("${module}")
+PY
+  then
+    return 0
+  fi
+
+  echo "==> Installing Python dependency for ${module}"
+  eval "${install_cmd}"
+}
+
+if [[ "$(component_enabled "${CFG_PATH}" "dope")" == "1" ]]; then
+  ensure_python_module "gdown" "python3 -m pip install --break-system-packages gdown"
+fi
+if [[ "$(component_enabled "${CFG_PATH}" "segment_anything")" == "1" ]]; then
+  ensure_python_module "segment_anything" "python3 -m pip install --break-system-packages --no-deps git+https://github.com/facebookresearch/segment-anything.git"
+fi
+
 if [[ "$(component_enabled "${CFG_PATH}" "ess")" == "1" ]]; then
   prefer_source_or_ros2_run "ESS (stereo depth) models" \
     "${ess_install_src}" isaac_ros_ess_models_install install_ess_models.sh "${eula_args[@]}"
@@ -422,6 +457,54 @@ else
   echo "==> Manipulation tutorial assets: all disabled by config (skipping)"
 fi
 
+if [[ "$(component_enabled "${CFG_PATH}" "segment_anything2")" == "1" ]]; then
+  echo
+  echo "==> Segment Anything2 models"
+  if [[ "$(uname -m)" != "x86_64" ]]; then
+    echo "WARNING: SAM2 ONNX export is only supported on x86_64. Copy the ONNX to this device." >&2
+  else
+    SAM2_ASSETS_DIR="${ISAAC_ROS_WS}/isaac_ros_assets/isaac_ros_segment_anything2"
+    SAM2_CHECKPOINT="${ISAAC_ROS_SEGMENT_ANYTHING2_CHECKPOINT:-${SAM2_ASSETS_DIR}/sam2.1_hiera_tiny.pt}"
+    SAM2_MODEL_DIR="${ISAAC_ROS_WS}/isaac_ros_assets/models/segment_anything2/1"
+    SAM2_MODEL_PATH="${SAM2_MODEL_DIR}/model.onnx"
+    SAM2_FP16="${ISAAC_ROS_SEGMENT_ANYTHING2_FP16:-1}"
+
+    if [[ -f "${SAM2_MODEL_PATH}" && "${ISAAC_ROS_MANIPULATION_FORCE_ASSET_SETUP:-0}" != "1" ]]; then
+      echo "SAM2 ONNX already exists; skipping export."
+    elif [[ ! -f "${SAM2_CHECKPOINT}" ]]; then
+      echo "WARNING: SAM2 checkpoint not found at ${SAM2_CHECKPOINT}; skipping export." >&2
+    else
+      ensure_python_module "sam2" "python3 -m pip install --break-system-packages git+https://github.com/facebookresearch/sam2.git -v"
+      if [[ "${SAM2_FP16}" == "1" ]]; then
+        ensure_python_module "onnxconverter_common" "python3 -m pip install --break-system-packages onnxconverter-common==1.14.0"
+      fi
+      mkdir -p "${SAM2_MODEL_DIR}"
+      export_cmd=(ros2 run isaac_ros_segment_anything2 sam2_onnx_exporter.py \
+        --checkpoint "${SAM2_CHECKPOINT}" \
+        --output "${SAM2_MODEL_PATH}")
+      if [[ "${SAM2_FP16}" == "1" ]]; then
+        export_cmd+=(--fp16)
+      fi
+      run_or_die "Export SAM2 ONNX" "${export_cmd[@]}"
+    fi
+
+    if [[ -f "${SAM2_ASSETS_DIR}/sam2_config.pbtxt" ]]; then
+      mkdir -p "${ISAAC_ROS_WS}/isaac_ros_assets/models/segment_anything2"
+      cp "${SAM2_ASSETS_DIR}/sam2_config.pbtxt" "${ISAAC_ROS_WS}/isaac_ros_assets/models/segment_anything2/config.pbtxt"
+    else
+      echo "WARNING: SAM2 config not found at ${SAM2_ASSETS_DIR}/sam2_config.pbtxt" >&2
+    fi
+    if [[ -d "${SAM2_ASSETS_DIR}/warmup" ]]; then
+      cp -r "${SAM2_ASSETS_DIR}/warmup" "${ISAAC_ROS_WS}/isaac_ros_assets/models/segment_anything2/"
+    else
+      echo "WARNING: SAM2 warmup data not found at ${SAM2_ASSETS_DIR}/warmup" >&2
+    fi
+  fi
+else
+  echo
+  echo "==> Segment Anything2 models: disabled by config (segment_anything2) (skipping)"
+fi
+
 echo
 echo "Done. Assets/models live under: ${ISAAC_ROS_WS}/isaac_ros_assets"
 
@@ -451,3 +534,6 @@ fi
 if [[ "$(component_enabled "${CFG_PATH}" "rtdetr")" == "1" ]]; then
   maybe_link_tmp_model "${ISAAC_ROS_WS}/isaac_ros_assets/models/synthetica_detr/sdetr_grasp.plan" /tmp/rtdetr.plan
 fi
+
+mkdir -p "$(dirname "${ASSET_MARKER}")"
+touch "${ASSET_MARKER}"

@@ -2,10 +2,18 @@
 #
 # This file is intended to be copied to:
 #   ~/.config/isaac-ros-cli/config.yaml
+# The bootstrap process creates a file in the right location
+# without using this one directly, so it's useful only for manual
+# copy or reference. Updating this file won't change the content
+# of ~/.config/isaac-ros-cli/config.yaml even running bootstrap.
 
 docker:
   image:
     additional_image_keys:
       - realsense
       - isaac_manipulation
-
+      # Swap the layer to build Isaac ROS from source:
+      # - isaac_manipulation_source
+      #
+      # Optional RL dependencies (tensordict + rsl-rl-lib):
+      # - isaac_manipulation_rsl_rl

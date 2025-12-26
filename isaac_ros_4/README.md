@@ -1,7 +1,8 @@
 # Isaac Manipulation dev-image customization
 
-This folder contains a custom Isaac ROS CLI image layer (`Dockerfile.isaac_manipulation`) and helper scripts to
-install the packages and perception models needed by the Isaac Manipulation tutorials (Isaac Sim).
+This folder contains custom Isaac ROS CLI image layers (`Dockerfile.isaac_manipulation`,
+`Dockerfile.isaac_manipulation_source`, `Dockerfile.isaac_manipulation_rsl_rl`) and helper scripts to install the
+packages and perception models needed by the Isaac Manipulation tutorials (Isaac Sim).
 
 ## Prerequisites
 
@@ -19,10 +20,14 @@ For Thor also check:
 
 ## What this layer does
 
-- Installs `ros-jazzy-isaac-manipulator-bringup` and the core Isaac ROS packages used by the manipulation
-  tutorials (e.g., `isaac_ros_examples`, FoundationPose/RT-DETR/GroundingDINO, ESS/FoundationStereo, SegmentAnything, DOPE).
-- Installs Python deps needed by model setup utilities (e.g., `segment-anything`, `gdown`).
-- Adds an optional entrypoint hook that can auto-run the model setup on container start.
+- **Binary layer (`Dockerfile.isaac_manipulation`)**: installs the Isaac Manipulation Debian packages
+  (cuMotion, nvblox, NITROS, perception stacks, etc.) and wires in the asset setup hook.
+- **Source layer (`Dockerfile.isaac_manipulation_source`)**: installs build tooling + all `rosdep` dependencies
+  for the manipulation source repos (using a temporary workspace at image build time), but **does not** build the
+  packages inside the image.
+- Adds entrypoint hooks that:
+  - auto-build the required source packages on first container start (or when forced), and
+  - auto-setup models/assets (idempotent; skips if already prepared).
 - Provides a host-side helper script to prefetch NGC quickstart assets into `${ISAAC_ROS_WS}/isaac_ros_assets`.
 - Versioning behavior:
   - Host prefetch (`scripts/prefetch_quickstart_assets_host.sh`) is driven by `versioning.quickstart_assets` in the config:
@@ -51,6 +56,7 @@ Keys under `components` gate the relevant downloads/installs during host prefetc
 - `grounding_dino`
 - `dope` (downloads DOPE weights via `setup_perception_models.py`)
 - `segment_anything` (downloads SAM checkpoint/assets + performs PTH->ONNX conversion via `setup_perception_models.py` on x86)
+- `segment_anything2` (optional; ONNX export is x86-only, copy to Jetson/Thor)
 - `gear_assembly` (downloads UR DNN Policy assets for gear assembly via `setup_perception_models.py`)
 
 ## How to use with `isaac-ros` CLI
@@ -73,7 +79,9 @@ Keys under `components` gate the relevant downloads/installs during host prefetc
    This script writes:
    - `${ISAAC_ROS_WS}/../scripts/.isaac_ros_common-config` (from `src/isaac_ros_custom_bringup/isaac_ros_4/setup_files/.isaac_ros_common-config`)
    - `~/.config/isaac-ros-cli/config.yaml` (from `src/isaac_ros_custom_bringup/isaac_ros_4/setup_files/isaac-ros-cli.config.yaml`)
-   - `~/.isaac_ros_dev-dockerargs` (from `src/isaac_ros_custom_bringup/isaac_ros_4/setup_files/.isaac_ros_dev-dockerargs`)
+   - `~/.isaac_ros_dev-dockerargs` (generated)
+   - Clones missing repositories from `source/isaac_ros_manipulation.repos` into `${ISAAC_ROS_WS}/src`
+     (add `--pull` to update all repos)
 
    Manual copy (equivalent):
 
@@ -84,7 +92,13 @@ Keys under `components` gate the relevant downloads/installs during host prefetc
    mkdir -p ~/.config/isaac-ros-cli
    cp ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/setup_files/isaac-ros-cli.config.yaml ~/.config/isaac-ros-cli/config.yaml
 
-   cp ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/setup_files/.isaac_ros_dev-dockerargs ~/.isaac_ros_dev-dockerargs
+   cat <<'EOF' > ~/.isaac_ros_dev-dockerargs
+    -e ISAAC_ROS_MANIPULATION_AUTO_BUILD=1
+    -e ISAAC_ROS_MANIPULATION_FORCE_BUILD=0
+    -e ISAAC_ROS_MANIPULATION_AUTO_SETUP=1
+    -e ISAAC_ROS_MANIPULATION_FORCE_ASSET_SETUP=0
+    -e ISAAC_ROS_ACCEPT_EULA=1
+    EOF
    ```
 
 3. Prefetch NGC quickstart assets **before** starting a dev container:
@@ -101,21 +115,78 @@ Keys under `components` gate the relevant downloads/installs during host prefetc
    - Idempotent by default; pass `--force` to re-download.
    - If `ISAAC_ROS_WS` is not set, the script infers it from its own location; or pass `--ws /path/to/isaac_ros_ws`.
 
-5. Build locally:
+4. Build locally:
 
    ```bash
    isaac-ros activate --build-local
    ```
 
+## Source build layer (build Isaac ROS from source)
+
+To build Isaac ROS packages from source at container start, use `Dockerfile.isaac_manipulation_source`
+and the repo list in `src/isaac_ros_custom_bringup/isaac_ros_4/source/isaac_ros_manipulation.repos`:
+
+1. Edit `~/.config/isaac-ros-cli/config.yaml` and replace `isaac_manipulation` with
+   `isaac_manipulation_source` under `additional_image_keys`.
+2. (Optional) Pin branches/commits by editing
+   `src/isaac_ros_custom_bringup/isaac_ros_4/source/isaac_ros_manipulation.repos`.
+3. Rebuild the image layers:
+
+   ```bash
+   isaac-ros activate --build-local
+   ```
+
+Notes:
+- The source layer preserves the default `ISAAC_ROS_WS` behavior (typically `/workspaces/isaac_ros-dev`). When no host mount is present, `/workspaces/isaac_ros-dev` is symlinked to `/opt/isaac_ros_ws`.
+- The repo list covers the packages pulled in by `ros-jazzy-isaac-manipulator-bringup` and Isaac Sim setup dependencies
+  (cuMotion, nvblox, NITROS, perception stacks, etc.).
+- **Packages are built at container start**, not during the image build. The auto-build hook runs if
+  `${ISAAC_ROS_WS}/install/setup.bash` is missing, or if forced.
+
+### Auto-build behavior
+
+At container start, `/usr/local/bin/isaac-manipulation-build.sh` runs automatically when
+`ISAAC_ROS_MANIPULATION_AUTO_BUILD=1` (default). It builds a **specific list** of packages using
+`colcon build --packages-up-to ...` (not the entire workspace). The target list is derived from
+`config/isaac_manipulation_assets.yaml`, plus `isaac_ros_nvblox` (always included).
+
+To force a rebuild, set:
+
+```bash
+-e ISAAC_ROS_MANIPULATION_FORCE_BUILD=1
+```
+
+To disable auto-build:
+
+```bash
+-e ISAAC_ROS_MANIPULATION_AUTO_BUILD=0
+```
+
+To override the CUDA arch list used by cuRobo:
+
+```bash
+-e ISAAC_MANIPULATION_TORCH_CUDA_ARCH_LIST=8.9+PTX
+```
+
 ## Optional: 
+
+### Enable RSL-RL dependencies (optional)
+
+RSL-RL is off by default. To install the RL dependencies (tensordict + rsl-rl-lib) during image build, add
+`isaac_manipulation_rsl_rl` to `additional_image_keys` in `~/.config/isaac-ros-cli/config.yaml`, then rebuild:
+
+```bash
+isaac-ros activate --build-local
+```
 
 ### Disable running setup automatically at container start
 
-   At container start you will have to download and convert the models: the helper files are set to it's done automatically.
+   At container start the helper files are set to do this automatically.
 
    To disable, edit `~/.isaac_ros_dev-dockerargs` and set:
 
    ```bash
+   -e ISAAC_ROS_MANIPULATION_AUTO_BUILD=0
    -e ISAAC_ROS_MANIPULATION_AUTO_SETUP=0
    -e ISAAC_ROS_ACCEPT_EULA=0
    ```
@@ -146,6 +217,11 @@ To derive these from the config file:
 ```bash
 bash ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/scripts/print_docker_build_args_from_config.sh
 ```
+
+Note: `Dockerfile.isaac_manipulation_source` always builds the repositories listed in
+`src/isaac_ros_custom_bringup/isaac_ros_4/source/isaac_ros_manipulation.repos`. The **auto-build target list**
+is derived from `config/isaac_manipulation_assets.yaml` (plus `isaac_ros_nvblox` which is always included). To slim
+a source build further, edit the config and/or the repo list (or add `COLCON_IGNORE` files in the workspace).
 
 ---
 

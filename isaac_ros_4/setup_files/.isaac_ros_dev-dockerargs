@@ -1,2 +1,3 @@
 -e ISAAC_ROS_MANIPULATION_AUTO_SETUP=1
 -e ISAAC_ROS_ACCEPT_EULA=1
+-w /workspaces/isaac_ros-dev

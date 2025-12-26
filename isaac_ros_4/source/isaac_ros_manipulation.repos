@@ -1,0 +1,51 @@
+# Isaac ROS 4 source repos needed for Isaac for Manipulation (Isaac Sim + real robot workflows).
+# Edit this list to pin versions or add/remove repositories for your development needs.
+repositories:
+  isaac_ros_common:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git
+    version: release-4.0
+  isaac_ros_nitros:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nitros.git
+    version: release-4.0
+  isaac_ros_image_pipeline:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_image_pipeline.git
+    version: release-4.0
+  isaac_ros_dnn_inference:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_dnn_inference.git
+    version: release-4.0
+  isaac_ros_dnn_stereo_depth:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_dnn_stereo_depth.git
+    version: release-4.0
+  isaac_ros_pose_estimation:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_pose_estimation.git
+    version: release-4.0
+  isaac_ros_object_detection:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_object_detection.git
+    version: release-4.0
+  isaac_ros_image_segmentation:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_image_segmentation.git
+    version: release-4.0
+  isaac_ros_cumotion:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_cumotion.git
+    version: release-4.0
+  isaac_ros_nvblox:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox.git
+    version: release-4.0
+  isaac_ros_examples:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_examples.git
+    version: release-4.0
+  isaac_manipulator:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_manipulator.git
+    version: release-4.0

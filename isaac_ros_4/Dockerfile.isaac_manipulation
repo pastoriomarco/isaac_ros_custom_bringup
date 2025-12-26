@@ -34,9 +34,11 @@ RUN --mount=type=cache,target=/var/cache/apt \
     set -euo pipefail; \
     apt-get update; \
     pkgs=( \
-        python3-git \
         ros-jazzy-isaac-ros-examples \
         ros-jazzy-isaac-manipulator-bringup \
+        ros-jazzy-hardware-interface-dbgsym \
+        ros-jazzy-controller-manager-dbgsym \
+        ros-jazzy-rmw-cyclonedds-cpp \
     ); \
     if [[ "${ISAAC_MANIPULATION_ENABLE_ESS:-1}" == "1" ]]; then \
         pkgs+=(ros-jazzy-isaac-ros-ess ros-jazzy-isaac-ros-ess-models-install); \
@@ -66,9 +68,9 @@ RUN --mount=type=cache,target=/var/cache/apt \
 # - segment-anything is required for PTH->ONNX conversion (x86 only).
 # - gdown is used to fetch DOPE weights.
 #
-# Note: We intentionally do not preinstall optional RL dependencies (e.g., tensordict/rsl-rl-lib)
-# here because some pip wheels attempt to upgrade apt-installed Python packages and fail during
-# container build (no RECORD files). Install them interactively if/when you need RL workflows.
+# Note: RSL-RL dependencies are available via the optional isaac_manipulation_rsl_rl layer.
+# We intentionally avoid preinstalling them here because some pip wheels attempt to upgrade
+# apt-installed Python packages and fail during container build (no RECORD files).
 RUN set -euo pipefail; \
     if [[ "${ISAAC_MANIPULATION_ENABLE_DOPE:-1}" == "1" ]]; then \
         python3 -m pip install --break-system-packages gdown; \
@@ -84,3 +86,23 @@ COPY config/isaac_manipulation_assets.yaml /usr/local/share/isaac-manipulation/i
 
 RUN chmod +x /usr/local/bin/isaac-manipulation-setup.sh \
     /usr/local/bin/scripts/entrypoint_additions/90-isaac-manipulation-assets.user.sh
+
+# Ensure ROS env is available in interactive shells (even when ~/.bashrc is bind-mounted).
+RUN set -euo pipefail; \
+    cat <<'EOF' >/etc/profile.d/isaac_ros_setup.sh
+#!/usr/bin/env bash
+if [ -f "/opt/ros/${ROS_DISTRO:-jazzy}/setup.bash" ]; then
+  # shellcheck disable=SC1091
+  source "/opt/ros/${ROS_DISTRO:-jazzy}/setup.bash"
+fi
+if [ -f "${ISAAC_ROS_WS:-/workspaces/isaac_ros-dev}/install/setup.bash" ]; then
+  # shellcheck disable=SC1091
+  source "${ISAAC_ROS_WS:-/workspaces/isaac_ros-dev}/install/setup.bash"
+fi
+EOF
+
+RUN set -euo pipefail; \
+    chmod 0644 /etc/profile.d/isaac_ros_setup.sh; \
+    if ! grep -q "isaac_ros_setup.sh" /etc/bash.bashrc; then \
+        echo "if [ -f /etc/profile.d/isaac_ros_setup.sh ]; then source /etc/profile.d/isaac_ros_setup.sh; fi" >> /etc/bash.bashrc; \
+    fi
