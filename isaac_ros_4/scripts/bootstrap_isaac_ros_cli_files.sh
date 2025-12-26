@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: bootstrap_isaac_ros_cli_files.sh [--force] [--source] [--rl] [--pull] [--auto-build <0|1>] [--force-build <0|1>] [--auto-setup <0|1>] [--force-asset-setup <0|1>] [--accept-eula <0|1>]
+Usage: bootstrap_isaac_ros_cli_files.sh [--force] [--source] [--rl] [--pull] [--skip-asset-install] [--force-build] [--disable-auto-build] [--disable-auto-setup] [--force-asset-setup] [--disable-accept-eula]
 
 Creates/copies Isaac ROS CLI helper files with default values:
   - ~/.config/isaac-ros-cli/config.yaml
@@ -16,12 +16,13 @@ Use --force to overwrite without prompts.
 Config options:
   --source   Use isaac_manipulation_source instead of isaac_manipulation.
   --rl       Append isaac_manipulation_rsl_rl to additional_image_keys.
-  --auto-build <0|1>   Set ISAAC_ROS_MANIPULATION_AUTO_BUILD in ~/.isaac_ros_dev-dockerargs.
-  --force-build <0|1>  Set ISAAC_ROS_MANIPULATION_FORCE_BUILD in ~/.isaac_ros_dev-dockerargs.
+  --force-build        Set ISAAC_ROS_MANIPULATION_FORCE_BUILD=1 in ~/.isaac_ros_dev-dockerargs.
+  --disable-auto-build Set ISAAC_ROS_MANIPULATION_AUTO_BUILD=0 in ~/.isaac_ros_dev-dockerargs.
   --pull              Set ISAAC_ROS_MANIPULATION_PULL_REPOS=1 in ~/.isaac_ros_dev-dockerargs.
-  --auto-setup <0|1>   Set ISAAC_ROS_MANIPULATION_AUTO_SETUP in ~/.isaac_ros_dev-dockerargs.
-  --force-asset-setup <0|1> Set ISAAC_ROS_MANIPULATION_FORCE_ASSET_SETUP in ~/.isaac_ros_dev-dockerargs.
-  --accept-eula <0|1>  Set ISAAC_ROS_ACCEPT_EULA in ~/.isaac_ros_dev-dockerargs.
+  --skip-asset-install Set ISAAC_MANIPULATION_SKIP_ASSET_INSTALL=1 in ~/.isaac_ros_dev-dockerargs.
+  --disable-auto-setup Set ISAAC_ROS_MANIPULATION_AUTO_SETUP=0 in ~/.isaac_ros_dev-dockerargs.
+  --force-asset-setup  Set ISAAC_ROS_MANIPULATION_FORCE_ASSET_SETUP=1 in ~/.isaac_ros_dev-dockerargs.
+  --disable-accept-eula Set ISAAC_ROS_ACCEPT_EULA=0 in ~/.isaac_ros_dev-dockerargs.
 EOF
 }
 
@@ -39,23 +40,10 @@ USE_RL=0
 AUTO_BUILD=1
 FORCE_BUILD=0
 PULL_REPOS=0
+SKIP_ASSET_INSTALL=0
 AUTO_SETUP=1
 FORCE_ASSET_SETUP=0
 ACCEPT_EULA=1
-
-parse_bool() {
-  case "$1" in
-    1|true|True|yes|on)
-      echo "1"
-      ;;
-    0|false|False|no|off)
-      echo "0"
-      ;;
-    *)
-      return 1
-      ;;
-  esac
-}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -71,74 +59,33 @@ while [[ $# -gt 0 ]]; do
       USE_RL=1
       shift
       ;;
-    --auto-build)
-      if [[ $# -lt 2 ]]; then
-        echo "ERROR: --auto-build requires a value (0 or 1)" >&2
-        usage >&2
-        exit 2
-      fi
-      if ! AUTO_BUILD="$(parse_bool "${2}")"; then
-        echo "ERROR: invalid value for --auto-build: ${2} (use 0 or 1)" >&2
-        usage >&2
-        exit 2
-      fi
-      shift 2
+    --disable-auto-build)
+      AUTO_BUILD=0
+      shift
       ;;
     --force-build)
-      if [[ $# -lt 2 ]]; then
-        echo "ERROR: --force-build requires a value (0 or 1)" >&2
-        usage >&2
-        exit 2
-      fi
-      if ! FORCE_BUILD="$(parse_bool "${2}")"; then
-        echo "ERROR: invalid value for --force-build: ${2} (use 0 or 1)" >&2
-        usage >&2
-        exit 2
-      fi
-      shift 2
+      FORCE_BUILD=1
+      shift
       ;;
     --pull)
       PULL_REPOS=1
       shift
       ;;
-    --auto-setup)
-      if [[ $# -lt 2 ]]; then
-        echo "ERROR: --auto-setup requires a value (0 or 1)" >&2
-        usage >&2
-        exit 2
-      fi
-      if ! AUTO_SETUP="$(parse_bool "${2}")"; then
-        echo "ERROR: invalid value for --auto-setup: ${2} (use 0 or 1)" >&2
-        usage >&2
-        exit 2
-      fi
-      shift 2
+    --skip-asset-install)
+      SKIP_ASSET_INSTALL=1
+      shift
+      ;;
+    --disable-auto-setup)
+      AUTO_SETUP=0
+      shift
       ;;
     --force-asset-setup)
-      if [[ $# -lt 2 ]]; then
-        echo "ERROR: --force-asset-setup requires a value (0 or 1)" >&2
-        usage >&2
-        exit 2
-      fi
-      if ! FORCE_ASSET_SETUP="$(parse_bool "${2}")"; then
-        echo "ERROR: invalid value for --force-asset-setup: ${2} (use 0 or 1)" >&2
-        usage >&2
-        exit 2
-      fi
-      shift 2
+      FORCE_ASSET_SETUP=1
+      shift
       ;;
-    --accept-eula)
-      if [[ $# -lt 2 ]]; then
-        echo "ERROR: --accept-eula requires a value (0 or 1)" >&2
-        usage >&2
-        exit 2
-      fi
-      if ! ACCEPT_EULA="$(parse_bool "${2}")"; then
-        echo "ERROR: invalid value for --accept-eula: ${2} (use 0 or 1)" >&2
-        usage >&2
-        exit 2
-      fi
-      shift 2
+    --disable-accept-eula)
+      ACCEPT_EULA=0
+      shift
       ;;
     -h|--help)
       usage
@@ -158,14 +105,6 @@ if [[ -z "${WS}" ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TEMPLATES_DIR="${SCRIPT_DIR}/../setup_files"
-
-SRC_COMMON="${TEMPLATES_DIR}/.isaac_ros_common-config"
-
-if [[ ! -f "${SRC_COMMON}" ]]; then
-  echo "ERROR: expected setup_files templates not found under: ${TEMPLATES_DIR}" >&2
-  exit 1
-fi
 
 TARGET_COMMON_DIR="${WS}/../scripts"
 TARGET_COMMON="${TARGET_COMMON_DIR}/.isaac_ros_common-config"
@@ -198,17 +137,31 @@ should_write() {
   return 1
 }
 
-maybe_install() {
-  local src="$1"
-  local dst="$2"
+write_common_config() {
+  local dst="$1"
+  local tmp
 
   if ! should_write "${dst}"; then
     echo "==> kept: ${dst}"
     return 0
   fi
 
+  tmp="$(mktemp)"
+  cat <<'EOF' > "${tmp}"
+# Isaac ROS CLI common config (sourced by isaac-ros-cli).
+#
+# This adds this repo's `isaac_ros_4/` directory to the Dockerfile search path so that the CLI can find:
+#   - Dockerfile.isaac_manipulation
+#
+# Note: this file is intended to be copied to:
+#   ${ISAAC_ROS_WS}/../scripts/.isaac_ros_common-config
+
+CONFIG_DOCKER_SEARCH_DIRS=(/etc/isaac-ros-cli/docker ${ISAAC_ROS_WS}/docker ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4)
+EOF
+
   mkdir -p "$(dirname "${dst}")"
-  install -m 0644 "${src}" "${dst}"
+  install -m 0644 "${tmp}" "${dst}"
+  rm -f "${tmp}"
   echo "==> wrote: ${dst}"
 }
 
@@ -270,6 +223,7 @@ write_dockerargs() {
     echo "-e ISAAC_ROS_MANIPULATION_AUTO_BUILD=${AUTO_BUILD}"
     echo "-e ISAAC_ROS_MANIPULATION_FORCE_BUILD=${FORCE_BUILD}"
     echo "-e ISAAC_ROS_MANIPULATION_PULL_REPOS=${PULL_REPOS}"
+    echo "-e ISAAC_MANIPULATION_SKIP_ASSET_INSTALL=${SKIP_ASSET_INSTALL}"
     echo "-e ISAAC_ROS_MANIPULATION_AUTO_SETUP=${AUTO_SETUP}"
     echo "-e ISAAC_ROS_MANIPULATION_FORCE_ASSET_SETUP=${FORCE_ASSET_SETUP}"
     echo "-e ISAAC_ROS_ACCEPT_EULA=${ACCEPT_EULA}"
@@ -285,7 +239,7 @@ write_dockerargs() {
 mkdir -p "${TARGET_COMMON_DIR}"
 mkdir -p "${TARGET_CLI_CFG_DIR}"
 
-maybe_install "${SRC_COMMON}" "${TARGET_COMMON}"
+write_common_config "${TARGET_COMMON}"
 write_dockerargs "${TARGET_DOCKERARGS}"
 write_cli_config "${TARGET_CLI_CFG}"
 

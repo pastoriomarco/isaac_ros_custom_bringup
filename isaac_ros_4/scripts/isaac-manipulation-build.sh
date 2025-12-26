@@ -129,7 +129,7 @@ if find "${SRC_DIR}" -name .gitmodules -print -quit | grep -q .; then
   done < <(find "${SRC_DIR}" -name .gitmodules -print0)
 fi
 
-if [[ "${ISAAC_MANIPULATION_SKIP_ASSET_INSTALL:-1}" == "1" ]]; then
+if [[ "${ISAAC_MANIPULATION_SKIP_ASSET_INSTALL:-0}" == "1" ]]; then
   ASSET_CMAKE="${SRC_DIR}/isaac_ros_common/isaac_ros_common/cmake/isaac_ros_common-extras-assets.cmake"
   if [[ -f "${ASSET_CMAKE}" ]]; then
     if grep -q 'add_custom_target("${TARGET_NAME}" ALL DEPENDS ${OUTPUT_PATHS})' "${ASSET_CMAKE}"; then
@@ -139,6 +139,13 @@ if [[ "${ISAAC_MANIPULATION_SKIP_ASSET_INSTALL:-1}" == "1" ]]; then
     fi
   else
     echo "WARNING: assets CMake file not found; asset installs may still run: ${ASSET_CMAKE}" >&2
+  fi
+else
+  ASSET_CMAKE="${SRC_DIR}/isaac_ros_common/isaac_ros_common/cmake/isaac_ros_common-extras-assets.cmake"
+  if [[ -f "${ASSET_CMAKE}" ]]; then
+    if grep -q 'add_custom_target("${TARGET_NAME}" DEPENDS ${OUTPUT_PATHS})' "${ASSET_CMAKE}"; then
+      sed -i 's/add_custom_target("${TARGET_NAME}" DEPENDS ${OUTPUT_PATHS})/add_custom_target("${TARGET_NAME}" ALL DEPENDS ${OUTPUT_PATHS})/' "${ASSET_CMAKE}"
+    fi
   fi
 fi
 
@@ -290,6 +297,8 @@ targets=(
   isaac_manipulator_pick_and_place
   isaac_ros_cumotion
   isaac_ros_nvblox
+  serial
+  ros2_robotiq_gripper
 )
 
 if [[ "${COMPONENTS[ess]:-0}" == "1" ]]; then
