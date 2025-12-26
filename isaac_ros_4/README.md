@@ -76,14 +76,18 @@ Keys under `components` gate the relevant downloads/installs during host prefetc
    bash ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/scripts/bootstrap_isaac_ros_cli_files.sh
    ```
 
+   To use the source build layer, rerun with `--source` (and `--rl` if you need RSL-RL):
+
+   ```bash
+   bash ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/scripts/bootstrap_isaac_ros_cli_files.sh --source
+   ```
+
    This script writes:
    - `${ISAAC_ROS_WS}/../scripts/.isaac_ros_common-config` (from `src/isaac_ros_custom_bringup/isaac_ros_4/setup_files/.isaac_ros_common-config`)
-   - `~/.config/isaac-ros-cli/config.yaml` (from `src/isaac_ros_custom_bringup/isaac_ros_4/setup_files/isaac-ros-cli.config.yaml`)
+   - `~/.config/isaac-ros-cli/config.yaml` (generated based on bootstrap flags like `--source` and `--rl`)
    - `~/.isaac_ros_dev-dockerargs` (generated)
-   - Clones missing repositories from `source/isaac_ros_manipulation.repos` into `${ISAAC_ROS_WS}/src`
-     (add `--pull` to update all repos)
 
-   Manual copy (equivalent):
+   Manual copy (if you prefer editing the template directly):
 
    ```bash
    mkdir -p ${ISAAC_ROS_WS}/../scripts
@@ -93,12 +97,14 @@ Keys under `components` gate the relevant downloads/installs during host prefetc
    cp ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/setup_files/isaac-ros-cli.config.yaml ~/.config/isaac-ros-cli/config.yaml
 
    cat <<'EOF' > ~/.isaac_ros_dev-dockerargs
-    -e ISAAC_ROS_MANIPULATION_AUTO_BUILD=1
-    -e ISAAC_ROS_MANIPULATION_FORCE_BUILD=0
-    -e ISAAC_ROS_MANIPULATION_AUTO_SETUP=1
-    -e ISAAC_ROS_MANIPULATION_FORCE_ASSET_SETUP=0
-    -e ISAAC_ROS_ACCEPT_EULA=1
-    EOF
+   -e ISAAC_ROS_MANIPULATION_AUTO_BUILD=1
+   -e ISAAC_ROS_MANIPULATION_FORCE_BUILD=0
+   -e ISAAC_ROS_MANIPULATION_AUTO_SETUP=1
+   -e ISAAC_ROS_MANIPULATION_FORCE_ASSET_SETUP=0
+   -e ISAAC_ROS_ACCEPT_EULA=1
+   -e ISAAC_ROS_MANIPULATION_PULL_REPOS=0
+   -w /workspaces/isaac_ros-dev
+   EOF
    ```
 
 3. Prefetch NGC quickstart assets **before** starting a dev container:
@@ -121,13 +127,46 @@ Keys under `components` gate the relevant downloads/installs during host prefetc
    isaac-ros activate --build-local
    ```
 
+## Customize and prepare configs (recommended sequence)
+
+Use this sequence any time you want to change what gets built or which assets are installed:
+
+1. **Bootstrap (or re-run with `--force`)** to refresh user config + dockerargs:
+   - `--source` enables the source build layer.
+   - `--rl` enables the RSL-RL layer (required for gear-assembly RL packages).
+2. **Edit component config** in
+   `src/isaac_ros_custom_bringup/isaac_ros_4/config/isaac_manipulation_assets.yaml`.
+   - This file gates **both** model/asset installers and source build targets.
+3. **Keep repos aligned** (source builds only):
+   - `src/isaac_ros_custom_bringup/isaac_ros_4/source/isaac_ros_manipulation.repos`
+   - If a component is enabled, ensure its repo is present. If you remove a repo, disable the component to avoid
+     build or asset-install failures.
+   - `isaac_ros_nvblox` is always built, so keep it in the repos list.
+4. **Adjust runtime behavior** in `~/.isaac_ros_dev-dockerargs`:
+   - Auto-build/auto-setup, EULA acceptance, and default working dir (`-w`).
+5. **Rebuild and run**:
+
+   ```bash
+   isaac-ros activate --build-local
+   ```
+
+## Binary build flow (prebuilt packages)
+
+Use this when you want to run the Debian packages and only download/convert assets at runtime:
+
+1. Ensure `~/.config/isaac-ros-cli/config.yaml` includes `isaac_manipulation` in `additional_image_keys`
+   (default when bootstrap is run without `--source`).
+2. Edit `config/isaac_manipulation_assets.yaml` to enable/disable models.
+3. Prefetch NGC quickstart assets on the host (optional but recommended).
+4. Build and run with `isaac-ros activate --build-local`.
+
 ## Source build layer (build Isaac ROS from source)
 
 To build Isaac ROS packages from source at container start, use `Dockerfile.isaac_manipulation_source`
 and the repo list in `src/isaac_ros_custom_bringup/isaac_ros_4/source/isaac_ros_manipulation.repos`:
 
-1. Edit `~/.config/isaac-ros-cli/config.yaml` and replace `isaac_manipulation` with
-   `isaac_manipulation_source` under `additional_image_keys`.
+1. Run bootstrap with `--source` (or edit `~/.config/isaac-ros-cli/config.yaml` to replace
+   `isaac_manipulation` with `isaac_manipulation_source` under `additional_image_keys`).
 2. (Optional) Pin branches/commits by editing
    `src/isaac_ros_custom_bringup/isaac_ros_4/source/isaac_ros_manipulation.repos`.
 3. Rebuild the image layers:
@@ -154,6 +193,12 @@ To force a rebuild, set:
 
 ```bash
 -e ISAAC_ROS_MANIPULATION_FORCE_BUILD=1
+```
+
+To update all repos before building:
+
+```bash
+-e ISAAC_ROS_MANIPULATION_PULL_REPOS=1
 ```
 
 To disable auto-build:

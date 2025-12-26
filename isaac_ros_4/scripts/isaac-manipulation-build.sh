@@ -105,6 +105,11 @@ else
   clone_missing_repos
 fi
 
+if [[ "${ISAAC_ROS_MANIPULATION_PULL_REPOS:-0}" == "1" ]]; then
+  log "Updating repositories (vcs pull)."
+  vcs pull "${SRC_DIR}"
+fi
+
 if command -v git-lfs >/dev/null 2>&1; then
   git lfs install --local >/dev/null 2>&1 || true
   while IFS= read -r -d '' attrs; do
