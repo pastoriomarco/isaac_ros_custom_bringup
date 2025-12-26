@@ -424,6 +424,7 @@ colcon_args=()
 if [[ "${ISAAC_ROS_MANIPULATION_SYMLINK_INSTALL:-1}" == "1" ]]; then
   colcon_args+=(--symlink-install)
 fi
+colcon_args+=(--cmake-args -DBUILD_TESTING=OFF)
 
 log "Building targets: ${targets[*]}"
 log "TORCH_CUDA_ARCH_LIST=${TORCH_CUDA_ARCH_LIST}"
