@@ -39,4 +39,18 @@ for rel_path in "${files[@]}"; do
   cp -a "${src_path}" "${dst_path}"
 done
 
+if ! command -v colcon >/dev/null 2>&1; then
+  echo "ERROR: colcon not found in PATH; cannot build packages." >&2
+  exit 1
+fi
+
+log "Building affected packages."
+(
+  cd "${WORKSPACE_ROOT}"
+  colcon build --packages-select \
+    isaac_manipulator_ros_python_utils \
+    isaac_manipulator_robot_description \
+    isaac_ros_cumotion_examples
+)
+
 log "Done."
