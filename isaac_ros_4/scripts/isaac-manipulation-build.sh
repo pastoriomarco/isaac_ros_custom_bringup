@@ -17,10 +17,6 @@ fi
 
 INSTALL_SETUP="${ISAAC_ROS_WS}/install/setup.bash"
 FORCE_BUILD="${ISAAC_ROS_MANIPULATION_FORCE_BUILD:-0}"
-if [[ "${FORCE_BUILD}" != "1" && -f "${INSTALL_SETUP}" ]]; then
-  log "install/setup.bash already exists; skipping build."
-  exit 0
-fi
 
 if ! command -v vcs >/dev/null 2>&1; then
   echo "ERROR: vcstool not found. Install python3-vcstool in the image." >&2
@@ -147,6 +143,11 @@ else
       sed -i 's/add_custom_target("${TARGET_NAME}" DEPENDS ${OUTPUT_PATHS})/add_custom_target("${TARGET_NAME}" ALL DEPENDS ${OUTPUT_PATHS})/' "${ASSET_CMAKE}"
     fi
   fi
+fi
+
+if [[ "${FORCE_BUILD}" != "1" && -f "${INSTALL_SETUP}" ]]; then
+  log "install/setup.bash already exists; skipping colcon build."
+  exit 0
 fi
 
 detect_arch_list() {
