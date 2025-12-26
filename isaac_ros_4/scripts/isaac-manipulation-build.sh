@@ -310,7 +310,10 @@ targets=(
   isaac_ros_cumotion
   isaac_ros_nvblox
   serial
-  ros2_robotiq_gripper
+  robotiq_driver
+  robotiq_controllers
+  robotiq_description
+  robotiq_hardware_tests
 )
 
 if [[ "${COMPONENTS[ess]:-0}" == "1" ]]; then
