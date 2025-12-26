@@ -70,13 +70,6 @@ RUN --mount=type=cache,target=/var/cache/apt \
     rosdep install --from-paths "${tmp_ws}/src" --ignore-src -r -y; \
     rm -rf "${tmp_ws}" /var/lib/apt/lists/*
 
-# Keep a default workspace path for isaac-ros-cli when a host mount is not present.
-RUN set -euo pipefail; \
-    mkdir -p /workspaces; \
-    if [[ ! -e /workspaces/isaac_ros-dev ]]; then \
-        ln -s "${ISAAC_MANIPULATION_SOURCE_WS}" /workspaces/isaac_ros-dev; \
-    fi
-
 # Python deps for model conversion are installed on demand by isaac-manipulation-setup.sh.
 
 # Optional: auto-setup models/assets at container start via entrypoint additions.

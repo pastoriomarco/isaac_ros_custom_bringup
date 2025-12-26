@@ -211,7 +211,7 @@ and the repo list in `src/isaac_ros_custom_bringup/isaac_ros_4/source/isaac_ros_
    ```
 
 Notes:
-- The source layer preserves the default `ISAAC_ROS_WS` behavior (typically `/workspaces/isaac_ros-dev`). When no host mount is present, `/workspaces/isaac_ros-dev` is symlinked to `/opt/isaac_ros_ws`.
+- The source layer preserves the default `ISAAC_ROS_WS` behavior (typically `/workspaces/isaac_ros-dev`). When no host mount is present, `/workspaces/isaac_ros-dev` is created as an empty directory.
 - The repo list covers the packages pulled in by `ros-jazzy-isaac-manipulator-bringup` and Isaac Sim setup dependencies
   (cuMotion, nvblox, NITROS, perception stacks, etc.).
 - Additional repos for Isaac Sim setup include `ros2_robotiq_gripper` and `serial` (built by default).

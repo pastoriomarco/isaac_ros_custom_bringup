@@ -158,6 +158,16 @@ fi
 
 if [[ "${FORCE_BUILD}" != "1" && -f "${INSTALL_SETUP}" ]]; then
   log "install/setup.bash already exists; skipping colcon build."
+  if [[ -f "/opt/ros/${ROS_DISTRO:-jazzy}/setup.bash" ]]; then
+    set +u
+    # shellcheck disable=SC1090
+    source "/opt/ros/${ROS_DISTRO:-jazzy}/setup.bash"
+    set -u
+  fi
+  set +u
+  # shellcheck disable=SC1090
+  source "${INSTALL_SETUP}"
+  set -u
   exit 0
 fi
 
