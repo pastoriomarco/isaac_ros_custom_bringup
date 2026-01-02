@@ -20,12 +20,13 @@ For Thor also check:
 
 ## What this layer does
 
-- **Binary layer (`Dockerfile.isaac_manipulation`)**: installs the Isaac Manipulation Debian packages
-  (cuMotion, nvblox, NITROS, perception stacks, etc.) and wires in the asset setup hook.
-- **Source layer (`Dockerfile.isaac_manipulation_source`)**: installs build tooling + all `rosdep` dependencies
+- **Source layer (`Dockerfile.isaac_manipulation_source`)** [RECOMMENDED]: installs build tooling + all `rosdep` dependencies
   for the manipulation source repos (using a temporary workspace at image build time), but **does not** build the
   packages inside the image. The packages are built at container start by the auto-build hook when
-  `${ISAAC_ROS_WS}/install/setup.bash` is missing (or when forced).
+  `${ISAAC_ROS_WS}/install/setup.bash` is missing (or when forced). I recommend this build if you are developing
+  with Isaac ROS, but be aware that building FoundationStereo from source may require more than 8GB VRAM.
+- **Binary layer (`Dockerfile.isaac_manipulation`)**: installs the Isaac Manipulation Debian packages
+  (cuMotion, nvblox, NITROS, perception stacks, etc.) and wires in the asset setup hook.
 - Adds entrypoint hooks that:
   - auto-build the required source packages on first container start (or when forced), and
   - auto-setup models/assets (idempotent; skips if already prepared).
@@ -40,27 +41,6 @@ or ahead of time via host prefetch.
     - CLI flags override the config (`--minor N` or `--latest-minor`).
   - In-container model install uses the upstream installer scripts shipped in the installed Isaac ROS packages; any NGC/model
     version pinning is controlled by those scripts (this layer just invokes them).
-
-## Config-driven components
-
-To avoid downloading/installing models and assets you don't need, both the host prefetch script and the in-container
-setup script can be driven by a YAML config:
-
-- Configure components and versioning in `src/isaac_ros_custom_bringup/isaac_ros_4/config/isaac_manipulation_assets.yaml`.
-  - Host prefetch reads this file.
-  - The Docker layer copies it into the image at `/usr/local/share/isaac-manipulation/isaac_manipulation_assets.yaml` for in-container setup.
-
-Keys under `components` gate the relevant downloads/installs during host prefetch and in-container setup:
-
-- `ess`
-- `foundationstereo` (also supports `model_res`: `low_res`/`high_res`/`both`)
-- `foundationpose` (also downloads sample object mesh/texture assets via `setup_perception_models.py`)
-- `rtdetr`
-- `grounding_dino`
-- `dope` (downloads DOPE weights via `setup_perception_models.py`)
-- `segment_anything` (downloads SAM checkpoint/assets + performs PTH->ONNX conversion via `setup_perception_models.py` on x86)
-- `segment_anything2` (optional; ONNX export is x86-only, copy to Jetson/Thor)
-- `gear_assembly` (downloads UR DNN Policy assets for gear assembly via `setup_perception_models.py`)
 
 ## How to use with `isaac-ros` CLI
 
@@ -79,7 +59,7 @@ Keys under `components` gate the relevant downloads/installs during host prefetc
    bash ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/scripts/bootstrap_isaac_ros_cli_files.sh
    ```
 
-   To use the source build layer, rerun with `--source` (and `--rl` if you need RSL-RL):
+   To use the source build layer, rerun with `--source`:
 
    ```bash
    bash ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/scripts/bootstrap_isaac_ros_cli_files.sh --source
@@ -104,7 +84,7 @@ Keys under `components` gate the relevant downloads/installs during host prefetc
    - `~/.config/isaac-ros-cli/config.yaml` (generated based on bootstrap flags like `--source` and `--rl`)
    - `~/.isaac_ros_dev-dockerargs` (generated)
 
-3. Prefetch NGC quickstart assets **before** starting a dev container (optional but recommended):
+3. Prefetch NGC quickstart assets **before** starting a dev container (optional):
 
    ```bash
    bash ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/scripts/prefetch_quickstart_assets_host.sh
@@ -152,21 +132,15 @@ Use this sequence any time you want to change what gets built or which assets ar
 
 ## Isaac Manipulation with Isaac Sim fixes
 
-When running the Isaac Manipulation tutorials against Isaac Sim, a few upstream files assume the UR
-driver `ros2_control` setup used for real robots. In Isaac Sim, the robot is driven by the
-topic-based `ros2_control` system and the sim-specific URDFs already include their own
-`ros2_control` block. The mismatch can lead to controllers failing to start, duplicate
-`ros2_control` tags, or the robot not responding to command topics.
-
-The helper script `scripts/apply-isaac-manipulation-fixes.sh` addresses this by:
-- overlaying patched xacro and Python helpers into your workspace so the sim path sets `sim_isaac`,
-  uses fake/mock hardware, and disables the default `ros2_control` tag when running in sim;
-- updating the Isaac Sim `ros2_control` xacros for UR10e+Robotiq and cuMotion examples to use
-  `topic_based_ros2_control/TopicBasedSystem` with `/isaac_joint_commands` and `/isaac_joint_states`; and
-- rebuilding the affected packages (`isaac_manipulator_ros_python_utils`,
+The helper script `scripts/apply-isaac-manipulation-fixes.sh` applies a small overlay to align the
+Isaac Sim workflow with the UR descriptions used by these tutorials. It:
+- patches the sim robot-description path to align with updated param `use_mock_hardware` in UR repos;
+- fixes UR `ros2_control`/URDF xacros used by the UR10e+Robotiq and cuMotion examples (e.g., xacro
+  include paths and invalid `{pi}` placeholders);
+- rebuilds the affected packages (`isaac_manipulator_ros_python_utils`,
   `isaac_manipulator_robot_description`, `isaac_ros_cumotion_examples`).
 
-To apply the fixes (source workspace required):
+To apply the fixes (`--source` workspace required):
 
 ```bash
 bash ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/scripts/apply-isaac-manipulation-fixes.sh
@@ -176,6 +150,27 @@ Notes:
 - Run inside the dev container (or any environment with `colcon` and the source checkouts available).
 - If `ISAAC_ROS_WS` is not set, the script infers the workspace root from its own location.
 - Re-source your workspace (`source install/setup.bash`) or restart the container after the build.
+
+## Config-driven components
+
+To avoid downloading/installing models and assets you don't need, both the host prefetch script and the in-container
+setup script can be driven by a YAML config:
+
+- Configure components and versioning in `src/isaac_ros_custom_bringup/isaac_ros_4/config/isaac_manipulation_assets.yaml`.
+  - Host prefetch reads this file.
+  - The Docker layer copies it into the image at `/usr/local/share/isaac-manipulation/isaac_manipulation_assets.yaml` for in-container setup.
+
+Keys under `components` gate the relevant downloads/installs during host prefetch and in-container setup:
+
+- `ess`
+- `foundationstereo` (also supports `model_res`: `low_res`/`high_res`/`both`)
+- `foundationpose` (also downloads sample object mesh/texture assets via `setup_perception_models.py`)
+- `rtdetr`
+- `grounding_dino`
+- `dope` (downloads DOPE weights via `setup_perception_models.py`)
+- `segment_anything` (downloads SAM checkpoint/assets + performs PTH->ONNX conversion via `setup_perception_models.py` on x86)
+- `segment_anything2` (optional; ONNX export is x86-only, copy to Jetson/Thor)
+- `gear_assembly` (downloads UR DNN Policy assets for gear assembly via `setup_perception_models.py`)
 
 ## Binary build flow (prebuilt packages)
 
