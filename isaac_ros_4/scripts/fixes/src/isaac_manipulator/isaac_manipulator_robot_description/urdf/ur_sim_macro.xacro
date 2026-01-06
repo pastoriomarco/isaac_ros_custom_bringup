@@ -109,21 +109,22 @@
 
     <xacro:if value="${generate_ros2_control_tag}">
       <!-- ros2 control include -->
-      <xacro:include filename="$(find ur_robot_driver)/urdf/ur.ros2_control.xacro" />
+      <xacro:include filename="$(find ur_description)/urdf/ur.ros2_control.xacro" />
       <!-- ros2 control instance -->
       <xacro:ur_ros2_control
         name="${name}"
-        tf_prefix="${tf_prefix}"
-        kinematics_parameters_file="${kinematics_parameters_file}"
-        robot_ip="${robot_ip}"
-        script_filename="${script_filename}"
-        input_recipe_filename="${input_recipe_filename}"
-        output_recipe_filename="${output_recipe_filename}"
-        transmission_hw_interface="${transmission_hw_interface}"
         use_mock_hardware="${use_mock_hardware}"
+        initial_positions="${initial_positions}"
         mock_sensor_commands="${mock_sensor_commands}"
         headless_mode="${headless_mode}"
-        initial_positions="${initial_positions}"
+        sim_gazebo="${sim_gazebo}"
+        sim_ignition="${sim_ignition}"
+        script_filename="${script_filename}"
+        output_recipe_filename="${output_recipe_filename}"
+        input_recipe_filename="${input_recipe_filename}"
+        tf_prefix="${tf_prefix}"
+        hash_kinematics="${kinematics_hash}"
+        robot_ip="${robot_ip}"
         use_tool_communication="${use_tool_communication}"
         tool_voltage="${tool_voltage}"
         tool_parity="${tool_parity}"
@@ -139,6 +140,7 @@
         script_command_port="${script_command_port}"
         trajectory_port="${trajectory_port}"
         non_blocking_read="${non_blocking_read}"
+        keep_alive_count="${keep_alive_count}"
         />
     </xacro:if>
 
