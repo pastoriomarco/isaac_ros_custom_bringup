@@ -54,7 +54,7 @@ Ensure under `[daemon]`:
 ```ini
 WaylandEnable=false
 AutomaticLoginEnable=true
-AutomaticLogin=tndlux
+AutomaticLogin=<username>
 ```
 
 ```bash
@@ -158,9 +158,9 @@ ssh <username>@<IP>
 #### Jetson Orin
 
 ```bash
-sudo -u tndlux env \
+sudo -u $(whoami) env \
   DISPLAY=:0 \
-  XAUTHORITY=/home/tndlux/.Xauthority \
+  XAUTHORITY=~/.Xauthority \
   x11vnc -display :0 -localhost -forever -noxdamage -nopw -rfbport 5900
 ```
 
@@ -169,7 +169,7 @@ sudo -u tndlux env \
 #### Jetson Thor
 
 ```bash
-sudo -u tndlux env \
+sudo -u $(whoami) env \
   DISPLAY=:0 \
   XAUTHORITY=/run/user/2002/gdm/Xauthority \
   XAUTHLOCALHOSTNAME=localhost \
