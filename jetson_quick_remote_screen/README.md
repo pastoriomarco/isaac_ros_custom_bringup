@@ -43,7 +43,7 @@ Connect to the Jetson using its current username and IP
 ssh <username>@<IP>
 ```
 
-**Jetson (SSH):**
+**Jetson (SSH):** (optional, you can skip and set this later if you have any trouble)
 
 ```bash
 sudo nano /etc/gdm3/custom.conf

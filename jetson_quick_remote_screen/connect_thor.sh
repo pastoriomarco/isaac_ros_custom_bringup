@@ -7,6 +7,7 @@ JETSON_HOST="$DEFAULT_JETSON_HOST"
 
 LOCAL_PORT="5906"
 REMOTE_PORT="5900"
+ENABLE_1080P="no"
 
 usage() {
   cat <<EOF
@@ -14,6 +15,7 @@ Usage: $(basename "$0") [--ip <JETSON_IP>]
 
 Defaults:
   --ip ${DEFAULT_JETSON_HOST}
+  --1080p (disabled)
 EOF
 }
 
@@ -31,6 +33,10 @@ while [ $# -gt 0 ]; do
       ;;
     --ip=*)
       JETSON_HOST="${1#--ip=}"
+      shift
+      ;;
+    --1080p)
+      ENABLE_1080P="yes"
       shift
       ;;
     -h|--help)
@@ -114,6 +120,13 @@ else
     -fN "${JETSON_USER}@${JETSON_HOST}"
 fi
 
+if [ "$ENABLE_1080P" = "yes" ]; then
+  echo "[*] Forcing 1080p on the Jetson (DISPLAY=:0, HDMI-0)..."
+  ssh "${ssh_master_opts[@]}" "${ssh_no_prompt_opts[@]}" "${JETSON_USER}@${JETSON_HOST}" \
+    "bash -lc 'DISPLAY=:0 xrandr --output HDMI-0 --mode 1920x1080 --rate 60'" >/dev/null 2>&1 || true
+  sleep 1
+fi
+
 echo "[*] Starting remote x11vnc on Thor (${JETSON_HOST})..."
 ssh "${ssh_master_opts[@]}" "${ssh_no_prompt_opts[@]}" "${JETSON_USER}@${JETSON_HOST}" "bash -lc '
   set -e
@@ -121,15 +134,31 @@ ssh "${ssh_master_opts[@]}" "${ssh_no_prompt_opts[@]}" "${JETSON_USER}@${JETSON_
 
   AUTH_ARG=\"\"
   RUN_AS_USER=\"${JETSON_USER}\"
+  XAUTH_PATH=\"\"
 
   if [ -r \"/home/${JETSON_USER}/.Xauthority\" ]; then
-    AUTH_ARG=\"-auth /home/${JETSON_USER}/.Xauthority\"
-  elif [ -r \"/run/user/\$(id -u gdm)/gdm/Xauthority\" ]; then
-    AUTH_ARG=\"-auth /run/user/\$(id -u gdm)/gdm/Xauthority\"
-    RUN_AS_USER=\"root\"
+    XAUTH_PATH=\"/home/${JETSON_USER}/.Xauthority\"
+    AUTH_ARG=\"-auth \${XAUTH_PATH}\"
   else
-    AUTH_ARG=\"-auth guess\"
-    RUN_AS_USER=\"root\"
+    # Prefer the active seat0 GDM Xauthority, which is common on Thor.
+    seat_uid=\$(loginctl list-sessions --no-legend 2>/dev/null | while read -r session uid user seat rest; do
+      if [ \"\$seat\" = \"seat0\" ]; then
+        echo \"\$uid\"
+        break
+      fi
+    done)
+    if [ -n \"\$seat_uid\" ] && [ -r \"/run/user/\${seat_uid}/gdm/Xauthority\" ]; then
+      XAUTH_PATH=\"/run/user/\${seat_uid}/gdm/Xauthority\"
+      AUTH_ARG=\"-auth \${XAUTH_PATH}\"
+      RUN_AS_USER=\"root\"
+    elif [ -r \"/run/user/\$(id -u gdm)/gdm/Xauthority\" ]; then
+      XAUTH_PATH=\"/run/user/\$(id -u gdm)/gdm/Xauthority\"
+      AUTH_ARG=\"-auth \${XAUTH_PATH}\"
+      RUN_AS_USER=\"root\"
+    else
+      AUTH_ARG=\"-auth guess\"
+      RUN_AS_USER=\"root\"
+    fi
   fi
 
 	  if [ \"\$RUN_AS_USER\" = \"root\" ]; then
@@ -137,7 +166,7 @@ ssh "${ssh_master_opts[@]}" "${ssh_no_prompt_opts[@]}" "${JETSON_USER}@${JETSON_
 	  else
 	    env \
 	      DISPLAY=:0 \
-	      XAUTHORITY=/home/${JETSON_USER}/.Xauthority \
+	      XAUTHORITY=\"\${XAUTH_PATH}\" \
       nohup x11vnc \$AUTH_ARG -display :0 -localhost -forever -noxdamage -nopw -rfbport ${REMOTE_PORT} \
         >/tmp/x11vnc.log 2>&1 &
     echo \$! > ${REMOTE_PID_FILE}
@@ -145,9 +174,13 @@ ssh "${ssh_master_opts[@]}" "${ssh_no_prompt_opts[@]}" "${JETSON_USER}@${JETSON_
   sleep 0.5
   pid=\$(cat ${REMOTE_PID_FILE})
   if ! kill -0 \"\$pid\" >/dev/null 2>&1; then
-    echo \"[remote] x11vnc failed to stay up (pid=\$pid)\" >&2
-    tail -n 40 /tmp/x11vnc.log >&2 || true
-    exit 1
+    if ps -p \"\$pid\" >/dev/null 2>&1; then
+      echo \"[remote] x11vnc is running (pid=\$pid) but owned by another user\"
+    else
+      echo \"[remote] x11vnc failed to stay up (pid=\$pid)\" >&2
+      tail -n 40 /tmp/x11vnc.log >&2 || true
+      exit 1
+    fi
   fi
   echo \"[remote] x11vnc pid=\$pid\"
 '"
