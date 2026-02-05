@@ -28,10 +28,10 @@ EOF
 
 infer_ws_from_script() {
   # Expected script location:
-  #   <ISAAC_ROS_WS>/src/isaac_ros_custom_bringup/isaac_ros_4/scripts/this_script.sh
+  #   <ISAAC_ROS_WS>/src/isaac_ros_custom_bringup/isaac_ros_4/4.0/scripts/this_script.sh
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  (cd "${script_dir}/../../../.." && pwd)
+  (cd "${script_dir}/../../../../.." && pwd)
 }
 
 FORCE=0
@@ -156,7 +156,7 @@ write_common_config() {
 # Note: this file is intended to be copied to:
 #   ${ISAAC_ROS_WS}/../scripts/.isaac_ros_common-config
 
-CONFIG_DOCKER_SEARCH_DIRS=(/etc/isaac-ros-cli/docker ${ISAAC_ROS_WS}/docker ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4)
+CONFIG_DOCKER_SEARCH_DIRS=(/etc/isaac-ros-cli/docker ${ISAAC_ROS_WS}/docker ${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_4/4.0)
 EOF
 
   mkdir -p "$(dirname "${dst}")"

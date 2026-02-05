@@ -2,9 +2,18 @@
 
 ## Scope
 
-This document analyzes the current state of `src/isaac_ros_custom_bringup/isaac_ros_4/` as an install/bootstrap helper
-for **Isaac ROS 4 (ROS 2 Jazzy)**. It uses “Isaac ROS 4” to mean the **major** release train (e.g., `release-4`), which
-can either:
+This document originally analyzed the pre-split `src/isaac_ros_custom_bringup/isaac_ros_4/` bootstrap as an
+install/helper for **Isaac ROS 4 (ROS 2 Jazzy)**.
+
+**Update (2026-02-05)**: this repo is now split by minor release:
+
+- `src/isaac_ros_custom_bringup/isaac_ros_4/4.0/`: legacy bootstrap (user-global config writes)
+- `src/isaac_ros_custom_bringup/isaac_ros_4/4.1/`: recommended bootstrap (workspace-scoped config by default)
+
+The “why” and most of the considerations below still apply, but when the text says “current state” it is usually
+describing what is now preserved under `isaac_ros_4/4.0/`.
+
+It uses “Isaac ROS 4” to mean the **major** release train (e.g., `release-4`), which can either:
 
 - float to the latest minor (e.g., APT repo `release-4`), or
 - be pinned to a specific minor (e.g., `release-4.0`, `release-4.1`).
@@ -92,9 +101,9 @@ This repo currently uses `~/.isaac_ros_dev-dockerargs` to inject env vars that t
   - `~/.config/isaac-ros-cli/config.yaml` (adds `realsense` + `isaac_manipulation*` to `additional_image_keys`)
   - `~/.isaac_ros_dev-dockerargs` (sets env vars to trigger runtime automation)
 - `scripts/prefetch_quickstart_assets_host.sh`: host-side download/extract of NGC `quickstart.tar.gz` bundles into
-  `${ISAAC_ROS_WS}/isaac_ros_assets`, driven by `config/isaac_manipulation_assets.yaml`.
+  `${ISAAC_ROS_WS}/isaac_ros_assets` (defaults to Isaac ROS 4.1 bundles; override with `--major/--minor/--latest`).
 - `scripts/isaac-manipulation-build.sh`: in-container script that can `vcs import` the source repos, optionally `vcs pull`,
-  and `colcon build` a subset of packages (derived from config).
+  and `colcon build` a subset of packages (based on what exists in the workspace).
 - `scripts/isaac-manipulation-setup.sh`: in-container model + asset setup (prefers upstream “models_install” scripts).
 - `scripts/apply-isaac-manipulation-fixes.sh`: applies a small set of file overrides into checked out repos and rebuilds
   affected packages.

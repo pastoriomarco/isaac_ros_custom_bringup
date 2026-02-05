@@ -1,0 +1,116 @@
+ARG BASE_IMAGE=ubuntu:24.04
+ARG ISAAC_MANIPULATION_LAYER_REV=2
+ARG ISAAC_MANIPULATION_ENABLE_ESS=1
+ARG ISAAC_MANIPULATION_ENABLE_FOUNDATIONSTEREO=1
+ARG ISAAC_MANIPULATION_ENABLE_FOUNDATIONPOSE=1
+ARG ISAAC_MANIPULATION_ENABLE_RTDETR=1
+ARG ISAAC_MANIPULATION_ENABLE_GROUNDING_DINO=1
+ARG ISAAC_MANIPULATION_ENABLE_SEGMENT_ANYTHING=1
+ARG ISAAC_MANIPULATION_ENABLE_SEGMENT_ANYTHING2=0
+ARG ISAAC_MANIPULATION_ENABLE_DOPE=1
+ARG ISAAC_MANIPULATION_TORCH_CUDA_ARCH_LIST="8.6+PTX"
+ARG ISAAC_MANIPULATION_SKIP_ASSET_INSTALL=0
+ARG ISAAC_MANIPULATION_SOURCE_WS=/opt/isaac_ros_ws
+
+FROM ${BASE_IMAGE}
+
+# Re-declare build args after FROM so they are available in this stage.
+ARG ISAAC_MANIPULATION_LAYER_REV=2
+ARG ISAAC_MANIPULATION_ENABLE_ESS=1
+ARG ISAAC_MANIPULATION_ENABLE_FOUNDATIONSTEREO=1
+ARG ISAAC_MANIPULATION_ENABLE_FOUNDATIONPOSE=1
+ARG ISAAC_MANIPULATION_ENABLE_RTDETR=1
+ARG ISAAC_MANIPULATION_ENABLE_GROUNDING_DINO=1
+ARG ISAAC_MANIPULATION_ENABLE_SEGMENT_ANYTHING=1
+ARG ISAAC_MANIPULATION_ENABLE_SEGMENT_ANYTHING2=0
+ARG ISAAC_MANIPULATION_ENABLE_DOPE=1
+ARG ISAAC_MANIPULATION_TORCH_CUDA_ARCH_LIST="8.6+PTX"
+ARG ISAAC_MANIPULATION_SKIP_ASSET_INSTALL=0
+ARG ISAAC_MANIPULATION_SOURCE_WS=/opt/isaac_ros_ws
+
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+ENV ISAAC_MANIPULATION_SKIP_ASSET_INSTALL=${ISAAC_MANIPULATION_SKIP_ASSET_INSTALL}
+ENV ISAAC_MANIPULATION_TORCH_CUDA_ARCH_LIST=${ISAAC_MANIPULATION_TORCH_CUDA_ARCH_LIST}
+
+# Isaac Sim manipulation tutorials recommend CycloneDDS.
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
+# Helper: fix Isaac ROS apt suite on Jetson/JetPack if needed.
+COPY scripts/ensure_isaac_ros_apt_repo.sh /usr/local/bin/ensure_isaac_ros_apt_repo.sh
+
+# Cache-buster for this layer (so script changes get picked up by isaac-ros-cli's hash-based tags).
+RUN echo "isaac_manipulation_source layer rev: ${ISAAC_MANIPULATION_LAYER_REV}" >/dev/null
+
+COPY source/isaac_ros_manipulation.repos /usr/local/share/isaac-manipulation/isaac_ros_manipulation.repos
+
+# Install build tooling + rosdep dependencies for the manipulation source workspace.
+# This keeps the image ready to build from source without running rosdep at runtime.
+RUN --mount=type=cache,target=/var/cache/apt \
+    set -euo pipefail; \
+    chmod +x /usr/local/bin/ensure_isaac_ros_apt_repo.sh; \
+    /usr/local/bin/ensure_isaac_ros_apt_repo.sh --suite auto; \
+    apt-get install -y \
+      git \
+      git-lfs \
+      python3-colcon-common-extensions \
+      python3-pip \
+      python3-rosdep \
+      python3-vcstool \
+      ros-${ROS_DISTRO:-jazzy}-rmw-cyclonedds-cpp \
+      ros-jazzy-isaac-ros-examples \
+      ros-jazzy-isaac-ros-ess ros-jazzy-isaac-ros-ess-models-install \
+      ros-jazzy-isaac-ros-foundationstereo ros-jazzy-isaac-ros-foundationstereo-models-install \
+      ros-jazzy-isaac-ros-foundationpose ros-jazzy-isaac-ros-foundationpose-models-install \
+      ros-jazzy-isaac-ros-rtdetr ros-jazzy-isaac-ros-rtdetr-models-install \
+      ros-jazzy-isaac-ros-grounding-dino ros-jazzy-isaac-ros-grounding-dino-models-install \
+      ros-jazzy-isaac-ros-segment-anything \
+      ros-jazzy-isaac-ros-dope; \
+    python3 -m pip install --break-system-packages cupy-cuda13x hdbscan; \
+    python3 -m pip install --break-system-packages --no-deps git+https://github.com/facebookresearch/segment-anything.git; \
+    git lfs install --system; \
+    if [[ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]]; then \
+      rosdep init; \
+    fi; \
+    tmp_ws="$(mktemp -d)"; \
+    mkdir -p "${tmp_ws}/src"; \
+    vcs import "${tmp_ws}/src" < /usr/local/share/isaac-manipulation/isaac_ros_manipulation.repos; \
+    set +u; \
+    source "/opt/ros/${ROS_DISTRO:-jazzy}/setup.bash"; \
+    set -u; \
+    rosdep update; \
+    rosdep install --from-paths "${tmp_ws}/src" --ignore-src -r -y; \
+    rm -rf "${tmp_ws}" /var/lib/apt/lists/*
+
+# Python deps for model conversion are installed on demand by isaac-manipulation-setup.sh.
+
+# Optional: auto-setup models/assets at container start via entrypoint additions.
+COPY scripts/isaac-manipulation-build.sh /usr/local/bin/isaac-manipulation-build.sh
+COPY scripts/isaac-manipulation-setup.sh /usr/local/bin/isaac-manipulation-setup.sh
+COPY scripts/entrypoint_additions/80-isaac-manipulation-build.user.sh /usr/local/bin/scripts/entrypoint_additions/80-isaac-manipulation-build.user.sh
+COPY scripts/entrypoint_additions/90-isaac-manipulation-assets.user.sh /usr/local/bin/scripts/entrypoint_additions/90-isaac-manipulation-assets.user.sh
+
+RUN chmod +x /usr/local/bin/isaac-manipulation-build.sh \
+    /usr/local/bin/isaac-manipulation-setup.sh \
+    /usr/local/bin/scripts/entrypoint_additions/80-isaac-manipulation-build.user.sh \
+    /usr/local/bin/scripts/entrypoint_additions/90-isaac-manipulation-assets.user.sh
+
+# Ensure ROS env is available in interactive shells (even when ~/.bashrc is bind-mounted).
+RUN set -euo pipefail; \
+    cat <<'EOF' >/etc/profile.d/isaac_ros_setup.sh
+#!/usr/bin/env bash
+if [ -f "/opt/ros/${ROS_DISTRO:-jazzy}/setup.bash" ]; then
+  # shellcheck disable=SC1091
+  source "/opt/ros/${ROS_DISTRO:-jazzy}/setup.bash"
+fi
+if [ -f "${ISAAC_ROS_WS:-/workspaces/isaac_ros-dev}/install/setup.bash" ]; then
+  # shellcheck disable=SC1091
+  source "${ISAAC_ROS_WS:-/workspaces/isaac_ros-dev}/install/setup.bash"
+fi
+EOF
+
+RUN set -euo pipefail; \
+    chmod 0644 /etc/profile.d/isaac_ros_setup.sh; \
+    if ! grep -q "isaac_ros_setup.sh" /etc/bash.bashrc; then \
+        echo "if [ -f /etc/profile.d/isaac_ros_setup.sh ]; then source /etc/profile.d/isaac_ros_setup.sh; fi" >> /etc/bash.bashrc; \
+    fi

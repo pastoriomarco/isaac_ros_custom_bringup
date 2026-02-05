@@ -21,9 +21,10 @@ Content is grouped by Isaac ROS major release, with a few utilities that are use
 
 ### `isaac_ros_4/` (ROS 2 Jazzy / Isaac ROS 4.x)
 
-- A dev-image customization layer for Isaac Manipulation (Dockerfile + optional entrypoint hook) to install tutorial packages and models.
-- Config-driven asset/model selection via `isaac_ros_4/config/isaac_manipulation_assets.yaml` (used by host prefetch + in-container setup).
-- Host helper scripts for Isaac ROS CLI bootstrap and NGC quickstart asset prefetch live in `isaac_ros_4/scripts/`.
+- A dev-image customization layer for Isaac Manipulation (Dockerfile + optional entrypoint hooks) to install tutorial packages and models.
+- Versioned by Isaac ROS minor: `isaac_ros_4/4.1/` (recommended) and `isaac_ros_4/4.0/` (legacy).
+- Config-driven asset/model selection via `isaac_ros_4/<version>/config/isaac_manipulation_assets.yaml` (used by host prefetch + in-container setup).
+- Host helper scripts for Isaac ROS CLI bootstrap and NGC quickstart asset prefetch live in `isaac_ros_4/<version>/scripts/`.
 - Full usage and rationale are in [isaac_ros_4/README.md](isaac_ros_4/README.md).
 
 ### `jetson_quick_remote_screen/` (utility)

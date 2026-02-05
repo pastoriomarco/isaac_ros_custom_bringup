@@ -1,0 +1,21 @@
+# Isaac ROS 4.1 minimal source repos for Isaac for Manipulation workflows.
+#
+# This list intentionally stays small (build only what you must from source), while using Isaac ROS Debian packages
+# for the rest. Edit this list to pin versions or add/remove repositories for your development needs.
+repositories:
+  isaac_manipulator:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_manipulator.git
+    version: release-4.1
+  ros2_robotiq_gripper:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/ros2_robotiq_gripper.git
+    version: main
+  serial:
+    type: git
+    url: https://github.com/tylerjw/serial.git
+    version: ros2
+  topic_based_ros2_control:
+    type: git
+    url: https://github.com/karanchahal-nv/topic_based_ros2_control.git
+    version: main

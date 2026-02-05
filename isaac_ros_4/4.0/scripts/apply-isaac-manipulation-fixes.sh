@@ -7,7 +7,7 @@ log() {
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FIXES_DIR="${SCRIPT_DIR}/fixes"
-WORKSPACE_ROOT="${ISAAC_ROS_WS:-$(cd "${SCRIPT_DIR}/../../../../" && pwd)}"
+WORKSPACE_ROOT="${ISAAC_ROS_WS:-$(cd "${SCRIPT_DIR}/../../../../../" && pwd)}"
 
 if [[ ! -d "${WORKSPACE_ROOT}/src" ]]; then
   echo "ERROR: Workspace src directory not found at ${WORKSPACE_ROOT}/src" >&2

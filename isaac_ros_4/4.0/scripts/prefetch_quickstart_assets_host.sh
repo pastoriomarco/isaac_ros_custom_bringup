@@ -32,10 +32,10 @@ need_cmd() {
 
 infer_ws_from_script() {
   # Expected script location:
-  #   <ISAAC_ROS_WS>/src/isaac_ros_custom_bringup/isaac_ros_4/scripts/this_script.sh
+  #   <ISAAC_ROS_WS>/src/isaac_ros_custom_bringup/isaac_ros_4/4.0/scripts/this_script.sh
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  (cd "${script_dir}/../../../.." && pwd)
+  (cd "${script_dir}/../../../../.." && pwd)
 }
 
 default_config_from_script() {
