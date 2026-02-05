@@ -17,8 +17,8 @@ RUN --mount=type=cache,target=/var/cache/apt \
       python3-colcon-common-extensions \
       python3-pip \
       python3-rosdep \
-      ros-jazzy-rmw-cyclonedds-cpp; \
-      ros-jazzy-isaac-manipulator-bringup \
+      ros-jazzy-rmw-cyclonedds-cpp \
+      ros-jazzy-isaac-manipulator-bringup; \
     python3 -m pip install --break-system-packages cupy-cuda13x hdbscan; \
     rm -rf /var/lib/apt/lists/*
 
@@ -26,4 +26,3 @@ RUN --mount=type=cache,target=/var/cache/apt \
 RUN mkdir -p /usr/local/bin/scripts/entrypoint_additions
 COPY 90-isaac-manipulation-bootstrap.user.sh /usr/local/bin/scripts/entrypoint_additions/90-isaac-manipulation-bootstrap.user.sh
 RUN chmod +x /usr/local/bin/scripts/entrypoint_additions/90-isaac-manipulation-bootstrap.user.sh
-
