@@ -343,7 +343,7 @@ ros2 launch isaac_ros_custom_bringup yolov8_inference.launch.py \
   image_input_topic:=/image_rect \
   camera_info_input_topic:=/camera_info \
   tensor_rt_input_topic:=/yolov8_encoder/planar_tensor \
-  force_engine_update:=True \
+  force_engine_update:=False \
   verbose:=True
 ```
 Use `force_engine_update:=True` only to (re)generate the TensorRT engine. For normal runs set
