@@ -200,9 +200,12 @@ ros2 launch isaac_ros_custom_bringup yolov8_inference.launch.py \
   input_binding_names:='["images"]' \
   output_tensor_names:='["output_tensor"]' \
   output_binding_names:='["output0"]' \
+  tensor_rt_input_topic:=/yolov8_encoder/planar_tensor \
   confidence_threshold:=0.25 nms_threshold:=0.45 num_classes:=1 \
   image_input_topic:=/rgb/image_rect_color camera_info_input_topic:=/rgb/camera_info
 ```
+If needed for compatibility/testing, you can switch to the encoder reshape output with
+`tensor_rt_input_topic:=/tensor_pub`.
 ### YOLOv8 → FoundationPose (RealSense)
 ```bash
 ros2 launch isaac_ros_custom_bringup yolov8_foundationpose_realsense.launch.py \
@@ -325,21 +328,26 @@ sudo apt-get install -y ros-humble-isaac-ros-examples
 
 Use the following launchers or change accordingly
 
-#with engine update, model _a
+#with engine update, custom model
 
 ```bash
 ros2 launch isaac_ros_custom_bringup yolov8_inference.launch.py \
-  model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/td06_a.onnx \
-  engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/td06_a.plan \
+  model_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/your_model.onnx \
+  engine_file_path:=${ISAAC_ROS_WS}/isaac_ros_assets/models/yolov8/your_model.plan \
   network_image_width:=640 network_image_height:=640 \
-  input_tensor_names:="['input_tensor']" \
-  input_binding_names:="['images']" \
-  output_tensor_names:="['output_tensor']" \
-  output_binding_names:="['output0']" \
+  input_tensor_names:='["input_tensor"]' \
+  input_binding_names:='["images"]' \
+  output_tensor_names:='["output_tensor"]' \
+  output_binding_names:='["output0"]' \
   num_classes:=1 \
+  image_input_topic:=/image_rect \
+  camera_info_input_topic:=/camera_info \
+  tensor_rt_input_topic:=/yolov8_encoder/planar_tensor \
   force_engine_update:=True \
   verbose:=True
 ```
+Use `force_engine_update:=True` only to (re)generate the TensorRT engine. For normal runs set
+`force_engine_update:=False` to avoid the startup warm-up delay.
 
 #threshold, no engine update, model _c
 

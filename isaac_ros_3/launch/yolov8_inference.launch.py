@@ -43,6 +43,7 @@ def generate_launch_description():
     image_stddev = LaunchConfiguration('image_stddev')
     image_input_topic = LaunchConfiguration('image_input_topic')
     camera_info_input_topic = LaunchConfiguration('camera_info_input_topic')
+    tensor_rt_input_topic = LaunchConfiguration('tensor_rt_input_topic')
 
     specs_path = os.environ.get("ISAAC_ROS_WS", "/workspaces/isaac_ros-dev") + "/isaac_ros_assets/isaac_ros_yolov8/quickstart_interface_specs.json"
     default_interface_specs_file = specs_path
@@ -67,7 +68,12 @@ def generate_launch_description():
             'force_engine_update': force_engine_update,
             'relaxed_dimension_check': True,
             'max_batch_size': 1
-        }]
+        }],
+        # Remap canonical and legacy input topic keys for cross-release compatibility.
+        remappings=[
+            ('tensor_pub', tensor_rt_input_topic),
+            ('tensor_input', tensor_rt_input_topic),
+        ]
     )
 
     yolov8_decoder_node = ComposableNode(
@@ -131,6 +137,7 @@ def generate_launch_description():
         DeclareLaunchArgument('image_stddev', default_value='[1.0, 1.0, 1.0]'),
         DeclareLaunchArgument('image_input_topic', default_value='/image_rect'),
         DeclareLaunchArgument('camera_info_input_topic', default_value='/camera_info_rect'),
+        DeclareLaunchArgument('tensor_rt_input_topic', default_value='/yolov8_encoder/planar_tensor'),
         encoder_include,
         container
     ])
