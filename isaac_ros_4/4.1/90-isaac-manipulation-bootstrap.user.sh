@@ -7,12 +7,12 @@ log() {
 
 ISAAC_ROS_WS="${ISAAC_ROS_WS:-/workspaces/isaac_ros-dev}"
 FORCE="${ISAAC_ROS_4_1_BOOTSTRAP_FORCE:-0}"
-MARKER_FILE="${ISAAC_ROS_WS}/.isaac_ros_4_1_bootstrap_done"
+#MARKER_FILE="${ISAAC_ROS_WS}/.isaac_ros_4_1_bootstrap_done"
 
-if [[ "${FORCE}" != "1" && -f "${MARKER_FILE}" ]]; then
-  log "Already bootstrapped (${MARKER_FILE}); skipping."
-  exit 0
-fi
+#if [[ "${FORCE}" != "1" && -f "${MARKER_FILE}" ]]; then
+#  log "Already bootstrapped (${MARKER_FILE}); skipping."
+#  exit 0
+#fi
 
 if [[ ! -d "${ISAAC_ROS_WS}" ]]; then
   echo "ERROR: ISAAC_ROS_WS does not exist: ${ISAAC_ROS_WS}" >&2
@@ -80,6 +80,6 @@ if [[ -f "${ISAAC_ROS_WS}/install/setup.bash" ]]; then
   set -u
 fi
 
-touch "${MARKER_FILE}"
+#touch "${MARKER_FILE}"
 log "Done."
 
