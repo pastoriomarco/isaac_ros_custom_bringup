@@ -128,6 +128,7 @@ if [[ ! -f "/etc/ros/rosdep/sources.list.d/20-default.list" ]]; then
 fi
 
 log "Installing topic_based_ros2_control deps (rosdep)"
+sudo apt-get update
 rosdep update
 rosdep install --from-paths "${ISAAC_ROS_WS}/src/topic_based_ros2_control" --ignore-src -y
 
