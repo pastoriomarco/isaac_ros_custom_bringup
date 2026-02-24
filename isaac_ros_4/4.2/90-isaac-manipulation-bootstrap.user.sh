@@ -62,7 +62,10 @@ patch_pip_shim_constraints() {
     sudo cp "${shim_file}" "${shim_backup}"
   fi
 
-  sudo sed -i 's/^tensordict==0\.7\.0$/tensordict==0.10.0/' "${shim_file}"
+  sudo sed -i \
+    -e 's/^tensordict==.*$/tensordict==0.10.0/' \
+    -e 's/^warp-lang==.*$/warp-lang==1.9.0/' \
+    "${shim_file}"
 }
 
 if ! source_if_exists "/opt/ros/${ROS_DISTRO:-jazzy}/setup.bash"; then
@@ -70,7 +73,7 @@ if ! source_if_exists "/opt/ros/${ROS_DISTRO:-jazzy}/setup.bash"; then
   exit 1
 fi
 
-log "Patching isaac-ros-cli pip shim constraints (tensordict)"
+log "Patching isaac-ros-cli pip shim constraints (tensordict, warp-lang)"
 patch_pip_shim_constraints
 
 if apt_pkg_installed ros-jazzy-rmw-cyclonedds-cpp; then
