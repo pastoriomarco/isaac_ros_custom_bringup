@@ -1,0 +1,33 @@
+ARG BASE_IMAGE=ubuntu:24.04
+
+FROM ${BASE_IMAGE}
+
+SHELL ["/bin/bash", "-c"]
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Isaac Sim manipulation tutorials recommend CycloneDDS.
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
+# Bake the original apt install sequence (plus nano) into the image so activation
+# doesn't repeat the heavy package installs on every launch.
+# Order is kept close to the working manual sequence: patch pip shim constraints,
+# then install CycloneDDS, python3-pip, and isaac-manipulator-bringup.
+RUN --mount=type=cache,target=/var/cache/apt \
+    set -euo pipefail; \
+    shim_file="/usr/share/isaac-ros-cli/pip_shim_constraints.txt"; \
+    if [[ -f "${shim_file}" ]]; then \
+      if [[ ! -f "${shim_file}.bak" ]]; then cp "${shim_file}" "${shim_file}.bak"; fi; \
+      sed -i 's/^tensordict==0\.7\.0$/tensordict==0.10.0/' "${shim_file}"; \
+    fi; \
+    apt-get update; \
+    apt-get install -y nano ros-jazzy-rmw-cyclonedds-cpp; \
+    apt update; \
+    apt install -y python3-pip; \
+    apt-get update; \
+    apt-get install -y ros-jazzy-isaac-manipulator-bringup; \
+    rm -rf /var/lib/apt/lists/*
+
+# Run the workspace-scoped steps at container start (as the non-root user).
+RUN mkdir -p /usr/local/bin/scripts/entrypoint_additions
+COPY 90-isaac-manipulation-bootstrap.user.sh /usr/local/bin/scripts/entrypoint_additions/90-isaac-manipulation-bootstrap.user.sh
+RUN chmod +x /usr/local/bin/scripts/entrypoint_additions/90-isaac-manipulation-bootstrap.user.sh
