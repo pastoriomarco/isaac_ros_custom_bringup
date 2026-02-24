@@ -27,7 +27,10 @@ RUN --mount=type=cache,target=/var/cache/apt \
     apt update; \
     apt install -y python3-pip; \
     apt-get update; \
-    apt-get install -y ros-jazzy-isaac-manipulator-bringup; \
+    apt-get install -y \
+      ros-jazzy-isaac-manipulator-bringup \
+      ros-jazzy-picknik-ament-copyright \
+      ros-jazzy-ros-testing; \
     rm -rf /var/lib/apt/lists/*
 
 # Run the workspace-scoped steps at container start (as the non-root user).
