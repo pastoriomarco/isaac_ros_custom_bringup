@@ -7,12 +7,6 @@ log() {
 
 ISAAC_ROS_WS="${ISAAC_ROS_WS:-/workspaces/isaac_ros-dev}"
 FORCE="${ISAAC_ROS_4_2_BOOTSTRAP_FORCE:-0}"
-#MARKER_FILE="${ISAAC_ROS_WS}/.isaac_ros_4_2_bootstrap_done"
-
-#if [[ "${FORCE}" != "1" && -f "${MARKER_FILE}" ]]; then
-#  log "Already bootstrapped (${MARKER_FILE}); skipping."
-#  exit 0
-#fi
 
 if [[ ! -d "${ISAAC_ROS_WS}" ]]; then
   echo "ERROR: ISAAC_ROS_WS does not exist: ${ISAAC_ROS_WS}" >&2
@@ -49,32 +43,10 @@ clone_if_missing() {
   git clone "$@"
 }
 
-patch_pip_shim_constraints() {
-  local shim_file="/usr/share/isaac-ros-cli/pip_shim_constraints.txt"
-  local shim_backup="${shim_file}.bak"
-
-  if [[ ! -f "${shim_file}" ]]; then
-    log "Skipping pip shim patch; file not found: ${shim_file}"
-    return 0
-  fi
-
-  if [[ ! -f "${shim_backup}" ]]; then
-    sudo cp "${shim_file}" "${shim_backup}"
-  fi
-
-  sudo sed -i \
-    -e 's/^tensordict==.*$/tensordict==0.10.0/' \
-    -e 's/^warp-lang==.*$/warp-lang==1.9.0/' \
-    "${shim_file}"
-}
-
 if ! source_if_exists "/opt/ros/${ROS_DISTRO:-jazzy}/setup.bash"; then
   echo "ERROR: ROS setup file not found: /opt/ros/${ROS_DISTRO:-jazzy}/setup.bash" >&2
   exit 1
 fi
-
-log "Patching isaac-ros-cli pip shim constraints (tensordict, warp-lang)"
-patch_pip_shim_constraints
 
 if apt_pkg_installed ros-jazzy-rmw-cyclonedds-cpp; then
   log "CycloneDDS RMW package already installed; skipping"

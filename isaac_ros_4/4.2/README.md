@@ -10,8 +10,8 @@ The `isaac-ros` CLI will only build this layer if:
 1. it can **find** `Dockerfile.isaac_manipulation` (Dockerfile search path), and
 2. the `isaac_manipulation` key is in the CLI **build sequence** (`additional_image_keys`).
 
-The `4.2` bootstrap hook applies the `isaac-ros-cli` `pip_shim_constraints.txt` tensordict patch, reruns the
-required apt installs in-container, and skips `git clone` when the target directory already exists.
+The `4.2` bootstrap hook reruns the required apt installs in-container and skips `git clone` when the target
+directory already exists.
 
 The 4.0 folder solves (1) by writing a `.isaac_ros_common-config` that extends
 `CONFIG_DOCKER_SEARCH_DIRS`. Do the same for `4.2/`.
