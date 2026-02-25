@@ -44,6 +44,7 @@ def generate_launch_description():
     image_input_topic = LaunchConfiguration('image_input_topic')
     camera_info_input_topic = LaunchConfiguration('camera_info_input_topic')
     tensor_rt_input_topic = LaunchConfiguration('tensor_rt_input_topic')
+    detections_output_topic = LaunchConfiguration('detections_output_topic')
 
     specs_path = os.environ.get("ISAAC_ROS_WS", "/workspaces/isaac_ros-dev") + "/isaac_ros_assets/isaac_ros_yolov8/quickstart_interface_specs.json"
     default_interface_specs_file = specs_path
@@ -85,7 +86,10 @@ def generate_launch_description():
             'nms_threshold': ParameterValue(nms_threshold, value_type=float),
             'num_classes': ParameterValue(num_classes, value_type=int),
             'tensor_name': 'output_tensor',
-        }]
+        }],
+        remappings=[
+            ('detections_output', detections_output_topic),
+        ]
     )
 
     encoder_include = IncludeLaunchDescription(
@@ -138,6 +142,7 @@ def generate_launch_description():
         DeclareLaunchArgument('image_input_topic', default_value='/image_rect'),
         DeclareLaunchArgument('camera_info_input_topic', default_value='/camera_info_rect'),
         DeclareLaunchArgument('tensor_rt_input_topic', default_value='/yolov8_encoder/planar_tensor'),
+        DeclareLaunchArgument('detections_output_topic', default_value='detections_output'),
         encoder_include,
         container
     ])

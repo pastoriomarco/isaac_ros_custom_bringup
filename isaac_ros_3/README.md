@@ -201,6 +201,7 @@ ros2 launch isaac_ros_custom_bringup yolov8_inference.launch.py \
   output_tensor_names:='["output_tensor"]' \
   output_binding_names:='["output0"]' \
   tensor_rt_input_topic:=/yolov8_encoder/planar_tensor \
+  detections_output_topic:=detections_output \
   confidence_threshold:=0.25 nms_threshold:=0.45 num_classes:=1 \
   image_input_topic:=/rgb/image_rect_color camera_info_input_topic:=/rgb/camera_info
 ```
