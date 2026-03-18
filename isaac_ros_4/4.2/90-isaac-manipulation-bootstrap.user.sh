@@ -7,13 +7,17 @@ log() {
 
 ISAAC_ROS_WS="${ISAAC_ROS_WS:-/workspaces/isaac_ros-dev}"
 FORCE="${ISAAC_ROS_4_2_BOOTSTRAP_FORCE:-0}"
+COLCON_BOOTSTRAP_ROOT="${ISAAC_ROS_WS}/.isaac_ros_cli/bootstrap/isaac_manipulation"
+COLCON_BUILD_BASE="${COLCON_BOOTSTRAP_ROOT}/build"
+COLCON_LOG_BASE="${COLCON_BOOTSTRAP_ROOT}/log"
+COLCON_INSTALL_BASE="${ISAAC_ROS_WS}/.isaac_ros_cli/install"
 
 if [[ ! -d "${ISAAC_ROS_WS}" ]]; then
   echo "ERROR: ISAAC_ROS_WS does not exist: ${ISAAC_ROS_WS}" >&2
   exit 1
 fi
 
-mkdir -p "${ISAAC_ROS_WS}/src"
+mkdir -p "${ISAAC_ROS_WS}/src" "${COLCON_BUILD_BASE}" "${COLCON_LOG_BASE}" "${COLCON_INSTALL_BASE}"
 
 source_if_exists() {
   local setup_file="$1"
@@ -31,6 +35,15 @@ apt_pkg_installed() {
   dpkg -s "$1" >/dev/null 2>&1
 }
 
+colcon_build() {
+  colcon \
+    --log-base "${COLCON_LOG_BASE}" \
+    build \
+    --build-base "${COLCON_BUILD_BASE}" \
+    --install-base "${COLCON_INSTALL_BASE}" \
+    "$@"
+}
+
 clone_if_missing() {
   local target_path="$1"
   shift
@@ -41,6 +54,48 @@ clone_if_missing() {
   fi
 
   git clone "$@"
+}
+
+sync_topic_based_ros2_control_headers() {
+  local source_include_dir="${ISAAC_ROS_WS}/src/topic_based_ros2_control/include"
+  local install_include_dir="${COLCON_INSTALL_BASE}/topic_based_ros2_control/include"
+
+  if [[ ! -d "${source_include_dir}" ]]; then
+    log "topic_based_ros2_control headers not found at ${source_include_dir}; skipping header sync."
+    return 0
+  fi
+
+  log "Syncing topic_based_ros2_control headers into isolated overlay install."
+  mkdir -p "${install_include_dir}"
+  cp -a "${source_include_dir}/." "${install_include_dir}/"
+}
+
+is_known_broken_overlay_prefix() {
+  case "$1" in
+    isaac_ros_nitros_camera_info_type|isaac_ros_nitros_detection3_d_array_type|isaac_ros_nitros_disparity_image_type)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+prune_incomplete_overlay_prefixes() {
+  local prefix_dir
+  local package_name
+  local package_share_dir
+
+  for prefix_dir in "${COLCON_INSTALL_BASE}"/*; do
+    [[ -d "${prefix_dir}" ]] || continue
+    package_name="$(basename "${prefix_dir}")"
+    package_share_dir="${prefix_dir}/share/${package_name}"
+
+    if is_known_broken_overlay_prefix "${package_name}" && [[ -f "${package_share_dir}/package.dsv" && ! -f "${package_share_dir}/local_setup.bash" ]]; then
+      log "Removing incomplete overlay prefix ${package_name}."
+      rm -rf "${prefix_dir}"
+    fi
+  done
 }
 
 if ! source_if_exists "/opt/ros/${ROS_DISTRO:-jazzy}/setup.bash"; then
@@ -86,9 +141,10 @@ fi
 
 log "Building Robotiq + serial"
 cd "${ISAAC_ROS_WS}"
-colcon build --symlink-install --packages-select-regex 'robotiq.*' serial --cmake-args -DBUILD_TESTING=OFF
+colcon_build --symlink-install --packages-select-regex 'robotiq.*' serial --cmake-args -DBUILD_TESTING=OFF
 
-source_if_exists "${ISAAC_ROS_WS}/install/setup.bash" || true
+prune_incomplete_overlay_prefixes
+source_if_exists "${COLCON_INSTALL_BASE}/setup.bash" || true
 
 log "Cloning topic_based_ros2_control (if missing)"
 cd "${ISAAC_ROS_WS}/src"
@@ -106,9 +162,11 @@ rosdep install --from-paths "${ISAAC_ROS_WS}/src/topic_based_ros2_control" --ign
 
 log "Building topic_based_ros2_control"
 cd "${ISAAC_ROS_WS}"
-colcon build --symlink-install --packages-up-to topic_based_ros2_control
+colcon_build --symlink-install --packages-up-to topic_based_ros2_control
+sync_topic_based_ros2_control_headers
 
-source_if_exists "${ISAAC_ROS_WS}/install/setup.bash" || true
+prune_incomplete_overlay_prefixes
+source_if_exists "${COLCON_INSTALL_BASE}/setup.bash" || true
 
 #touch "${MARKER_FILE}"
 log "Done."

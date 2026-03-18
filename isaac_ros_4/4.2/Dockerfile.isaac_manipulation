@@ -4,6 +4,7 @@ FROM ${BASE_IMAGE}
 
 SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
+LABEL isaac_manipulation_bootstrap_revision="2026-03-18-3"
 
 # Isaac Sim manipulation tutorials recommend CycloneDDS.
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
