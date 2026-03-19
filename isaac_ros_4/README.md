@@ -2,7 +2,7 @@
 
 This directory is versioned by **Isaac ROS minor release**:
 
-- `4.2/`: **recommended** (`pip_shim_constraints` patch + in-container bootstrap sequence + idempotent clones)
+- `4.2/`: **recommended** (workspace-root `build/`, `log/`, and `install/` + idempotent clones)
 - `4.1/`: previous workspace-scoped `isaac-ros-cli` config + lighter bootstrap
 - `4.0/`: legacy bootstrap (writes user-global `~/.config/isaac-ros-cli/config.yaml` and `~/.isaac_ros_dev-dockerargs`)
 

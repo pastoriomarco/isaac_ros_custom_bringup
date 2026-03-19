@@ -7,10 +7,9 @@ log() {
 
 ISAAC_ROS_WS="${ISAAC_ROS_WS:-/workspaces/isaac_ros-dev}"
 FORCE="${ISAAC_ROS_4_2_BOOTSTRAP_FORCE:-0}"
-COLCON_BOOTSTRAP_ROOT="${ISAAC_ROS_WS}/.isaac_ros_cli/bootstrap/isaac_manipulation"
-COLCON_BUILD_BASE="${COLCON_BOOTSTRAP_ROOT}/build"
-COLCON_LOG_BASE="${COLCON_BOOTSTRAP_ROOT}/log"
-COLCON_INSTALL_BASE="${ISAAC_ROS_WS}/.isaac_ros_cli/install"
+COLCON_BUILD_BASE="${ISAAC_ROS_COLCON_BUILD_BASE:-${ISAAC_ROS_WS}/build}"
+COLCON_LOG_BASE="${ISAAC_ROS_COLCON_LOG_BASE:-${ISAAC_ROS_WS}/log}"
+COLCON_INSTALL_BASE="${ISAAC_ROS_COLCON_INSTALL_BASE:-${ISAAC_ROS_WS}/install}"
 
 if [[ ! -d "${ISAAC_ROS_WS}" ]]; then
   echo "ERROR: ISAAC_ROS_WS does not exist: ${ISAAC_ROS_WS}" >&2
@@ -65,7 +64,7 @@ sync_topic_based_ros2_control_headers() {
     return 0
   fi
 
-  log "Syncing topic_based_ros2_control headers into isolated overlay install."
+  log "Syncing topic_based_ros2_control headers into ${COLCON_INSTALL_BASE}."
   mkdir -p "${install_include_dir}"
   cp -a "${source_include_dir}/." "${install_include_dir}/"
 }

@@ -13,10 +13,21 @@ The `isaac-ros` CLI will only build a layer if:
 2. the matching key is in the CLI **build sequence** (`additional_image_keys`).
 
 The `4.2` bootstrap hooks rerun the required setup in-container and skip `git clone` when the target
-directory already exists. The `manymove_xarm` hook expects `src/manymove` and `src/isaac_ros_custom_bringup`
+directory already exists. By default they now use the standard workspace layout:
+`${ISAAC_ROS_WS}/build`, `${ISAAC_ROS_WS}/log`, and `${ISAAC_ROS_WS}/install`.
+That keeps entrypoint bootstrap builds aligned with later manual `colcon build` runs inside or outside
+the container. The `manymove_xarm` hook expects `src/manymove` and `src/isaac_ros_custom_bringup`
 to already exist in the mounted workspace, clones `src/xarm_ros2` from
 `https://github.com/pastoriomarco/xarm_ros2.git -b jazzy_no_gazebo --recursive` when missing, and also bootstraps
 `src/Groot` following ManyMove's workspace instructions.
+
+If you need a different layout, override the colcon paths before `isaac-ros activate`:
+
+```bash
+export ISAAC_ROS_COLCON_BUILD_BASE="${ISAAC_ROS_WS}/build"
+export ISAAC_ROS_COLCON_LOG_BASE="${ISAAC_ROS_WS}/log"
+export ISAAC_ROS_COLCON_INSTALL_BASE="${ISAAC_ROS_WS}/install"
+```
 
 The 4.0 folder solves (1) by writing a `.isaac_ros_common-config` that extends
 `CONFIG_DOCKER_SEARCH_DIRS`. Do the same for `4.2/`.

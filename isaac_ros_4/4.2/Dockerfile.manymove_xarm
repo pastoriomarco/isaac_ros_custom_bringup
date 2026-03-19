@@ -4,7 +4,7 @@ FROM ${BASE_IMAGE}
 
 SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
-LABEL manymove_xarm_bootstrap_revision="2026-03-18-6"
+LABEL manymove_xarm_bootstrap_revision="2026-03-19-2"
 
 RUN --mount=type=cache,target=/var/cache/apt \
     set -euo pipefail; \
@@ -83,8 +83,10 @@ RUN --mount=type=cache,target=/var/cache/apt \
     fi
 
 RUN printf '%s\n' \
-    'if [ -f "${ISAAC_ROS_WS}/.isaac_ros_cli/install/setup.bash" ]; then' \
-    '  source "${ISAAC_ROS_WS}/.isaac_ros_cli/install/setup.bash"' \
+    'overlay_ws="${ISAAC_ROS_WS:-/workspaces/isaac_ros-dev}"' \
+    'overlay_setup="${ISAAC_ROS_COLCON_INSTALL_BASE:-${overlay_ws}/install}/setup.bash"' \
+    'if [ -f "${overlay_setup}" ]; then' \
+    '  source "${overlay_setup}"' \
     'fi' \
     >> /etc/bash.bashrc
 
