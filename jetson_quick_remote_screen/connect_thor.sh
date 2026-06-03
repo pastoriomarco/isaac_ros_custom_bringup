@@ -208,3 +208,4 @@ fi
 
 echo "[*] Opening VNC viewer..."
 vncviewer "127.0.0.1:${LOCAL_PORT}"
+

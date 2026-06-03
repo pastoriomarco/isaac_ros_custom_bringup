@@ -16,6 +16,57 @@ Where they are identical, **no platform is specified**.
 
 ---
 
+## 0.1) Fresh Orin after SDK Manager flash
+
+Use this sequence when setting up an AGX Orin over USB without a physical monitor.
+
+1. Connect the host to the Orin using the USB-C port next to the 40-pin header.
+
+2. The USB network address should be:
+
+```bash
+ping 192.168.55.1
+```
+
+3. If SSH reports a changed host key after reflashing:
+
+```bash
+ssh-keygen -R 192.168.55.1
+```
+
+4. Use the serial console if the first boot wizard is needed:
+
+```bash
+sudo screen /dev/ttyACM0 115200
+```
+
+If you get a normal `localhost.localdomain login:` prompt and can log in, first-boot user setup is complete. If you see the initial setup wizard, complete it there. If a DisplayPort dummy plug is attached, the wizard or GDM login may go to the graphical display instead of serial.
+
+5. Configure Wi-Fi from serial or SSH if the Orin needs internet for packages:
+
+```bash
+sudo nmcli device wifi connect "SSID" password "PASSWORD" ifname wlP1p1s0
+```
+
+6. Install x11vnc on the Orin:
+
+```bash
+sudo apt update
+sudo apt install -y x11vnc
+```
+
+7. If another Jetson, such as Thor, already uses local VNC port `5906`, use a different local port for Orin:
+
+```bash
+./connect_orin.sh --ip 192.168.55.1 --local-port 5907
+```
+
+On a fresh graphical boot, the first connection can show the GDM login screen. After logging in, the viewer may close because GDM replaces the greeter session with the user desktop. Wait a few seconds and run the same command again to attach to the logged-in desktop.
+
+8. After SSH works at `192.168.55.1` and the `tndlux` user can sudo, SDK Manager can continue installing target components over USB.
+
+---
+
 ## 1) Laptop setup (Ubuntu 24.04)
 
 ### 1.1 Install VNC viewer and SSH client
@@ -114,6 +165,12 @@ Override the default IP if needed:
 ./connect_orin.sh --ip 192.168.1.xx
 ```
 
+Use another local port if `5906` is already used by another Jetson session:
+
+```bash
+./connect_orin.sh --ip 192.168.55.1 --local-port 5907
+```
+
 The script:
 
 * opens a master SSH connection
@@ -158,10 +215,7 @@ ssh <username>@<IP>
 #### Jetson Orin
 
 ```bash
-sudo -u $(whoami) env \
-  DISPLAY=:0 \
-  XAUTHORITY=~/.Xauthority \
-  x11vnc -display :0 -localhost -forever -noxdamage -nopw -rfbport 5900
+x11vnc -auth guess -find -localhost -forever -noxdamage -nopw -rfbport 5900
 ```
 
 ---
