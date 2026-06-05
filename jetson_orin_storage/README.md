@@ -15,6 +15,140 @@ The Orin has:
 
 The goal is to keep the operating system on eMMC while putting large developer/runtime data on the NVMe. This avoids filling the eMMC with Docker images, Isaac ROS assets, CUDA local installs, VS Code server files, downloads, and caches.
 
+If the Jetson boots from one sufficiently large SSD/NVMe root filesystem, this
+extra eMMC-relief layout is usually not needed. In that case, use the standard
+Docker/NVIDIA/runtime setup and keep model caches on the root SSD. This document
+is for the split-storage case: small system disk plus large secondary NVMe.
+
+## Fresh Machine Bootstrap
+
+Use this sequence on a newly formatted Orin before applying the
+machine-specific record below. Do **not** copy the UUID from this document onto a
+different SSD; discover the UUID on the target machine.
+
+1. Identify the NVMe partition:
+
+   ```bash
+   lsblk -o NAME,SIZE,FSTYPE,LABEL,UUID,MOUNTPOINTS
+   ```
+
+   Set the partition you intend to use:
+
+   ```bash
+   export NVME_PART=/dev/nvme0n1p1
+   ```
+
+2. Format only when you intentionally want to erase that partition:
+
+   ```bash
+   sudo mkfs.ext4 -L nova_ssd "${NVME_PART}"
+   ```
+
+3. Mount it persistently at `/mnt/nova_ssd`:
+
+   ```bash
+   sudo mkdir -p /mnt/nova_ssd
+   NVME_UUID="$(sudo blkid -s UUID -o value "${NVME_PART}")"
+   echo "UUID=${NVME_UUID} /mnt/nova_ssd ext4 defaults,noatime 0 2" | sudo tee -a /etc/fstab
+   sudo mount /mnt/nova_ssd
+   sudo chown "${USER}:${USER}" /mnt/nova_ssd
+   ```
+
+4. Create the load-bearing directories used by the ManyForge/NemoClaw Orin
+   stack:
+
+   ```bash
+   mkdir -p \
+     /mnt/nova_ssd/docker \
+     /mnt/nova_ssd/containerd \
+     /mnt/nova_ssd/apt/archives \
+     /mnt/nova_ssd/opt \
+     /mnt/nova_ssd/hf-cache-orin \
+     /mnt/nova_ssd/llama-cpp-cache \
+     /mnt/nova_ssd/nemoclaw-state/nemoclaw \
+     /mnt/nova_ssd/home-bind \
+     /mnt/nova_ssd/user-bind \
+     /mnt/nova_ssd/system-bind \
+     /mnt/nova_ssd/tmp \
+     /mnt/nova_ssd/var-tmp
+   sudo chmod 1777 /mnt/nova_ssd/tmp /mnt/nova_ssd/var-tmp
+   ```
+
+5. After Docker and the NVIDIA Container Toolkit are installed, move Docker to
+   the NVMe and keep the NVIDIA runtime as default. If
+   `/etc/docker/daemon.json` already contains site-specific settings, merge
+   these keys instead of replacing the file:
+
+   ```bash
+   sudo mkdir -p /etc/docker
+   sudo tee /etc/docker/daemon.json >/dev/null <<'EOF'
+   {
+     "runtimes": {
+       "nvidia": {
+         "path": "nvidia-container-runtime",
+         "runtimeArgs": []
+       }
+     },
+     "default-runtime": "nvidia",
+     "data-root": "/mnt/nova_ssd/docker"
+   }
+   EOF
+   sudo systemctl restart docker
+   sudo usermod -aG docker "${USER}"
+   ```
+
+   Log out/in before relying on Docker group membership.
+
+6. Add bind mounts only for paths that would otherwise fill the eMMC. At minimum
+   for the ManyForge/NemoClaw Orin stack, keep `~/.cache`, `~/.local`, `/tmp`,
+   `/var/tmp`, and `~/.nemoclaw` on the NVMe. Copy existing contents first, then
+   add fstab bind entries using the pattern below:
+
+   ```bash
+   sudo apt-get install -y rsync
+
+   USER_NAME="$(id -un)"
+   HOME_DIR="$(getent passwd "${USER_NAME}" | cut -d: -f6)"
+
+   mkdir -p \
+     "/mnt/nova_ssd/user-bind/${USER_NAME}-cache" \
+     "/mnt/nova_ssd/user-bind/${USER_NAME}-local" \
+     "/mnt/nova_ssd/nemoclaw-state/nemoclaw"
+
+   mkdir -p "${HOME_DIR}/.cache" "${HOME_DIR}/.local" "${HOME_DIR}/.nemoclaw"
+   sudo rsync -aHAX "${HOME_DIR}/.cache/" "/mnt/nova_ssd/user-bind/${USER_NAME}-cache/"
+   sudo rsync -aHAX "${HOME_DIR}/.local/" "/mnt/nova_ssd/user-bind/${USER_NAME}-local/"
+   sudo rsync -aHAX "${HOME_DIR}/.nemoclaw/" "/mnt/nova_ssd/nemoclaw-state/nemoclaw/"
+
+   sudo mount --bind "/mnt/nova_ssd/user-bind/${USER_NAME}-cache" "${HOME_DIR}/.cache"
+   sudo mount --bind "/mnt/nova_ssd/user-bind/${USER_NAME}-local" "${HOME_DIR}/.local"
+   sudo mount --bind /mnt/nova_ssd/nemoclaw-state/nemoclaw "${HOME_DIR}/.nemoclaw"
+
+   {
+     echo "/mnt/nova_ssd/user-bind/${USER_NAME}-cache ${HOME_DIR}/.cache none bind,nofail,x-gvfs-hide,x-systemd.requires-mounts-for=/mnt/nova_ssd 0 0"
+     echo "/mnt/nova_ssd/user-bind/${USER_NAME}-local ${HOME_DIR}/.local none bind,nofail,x-gvfs-hide,x-systemd.requires-mounts-for=/mnt/nova_ssd 0 0"
+     echo "/mnt/nova_ssd/nemoclaw-state/nemoclaw ${HOME_DIR}/.nemoclaw none bind,nofail,x-gvfs-hide,x-systemd.requires-mounts-for=/mnt/nova_ssd 0 0"
+   } | sudo tee -a /etc/fstab
+   ```
+
+   ```fstab
+   /mnt/nova_ssd/user-bind/<user>-cache /home/<user>/.cache none bind,nofail,x-gvfs-hide,x-systemd.requires-mounts-for=/mnt/nova_ssd 0 0
+   ```
+
+   `~/.nemoclaw` must be a real directory or bind mount, never a symlink;
+   NemoClaw rejects symlinked config directories.
+
+7. Verify before continuing with the stack install:
+
+   ```bash
+   findmnt /mnt/nova_ssd
+   docker info | grep -E 'Docker Root Dir|Default Runtime|Runtimes'
+   df -h / /mnt/nova_ssd
+   findmnt -T "$HOME/.cache"
+   findmnt -T "$HOME/.local"
+   test ! -L "$HOME/.nemoclaw"
+   ```
+
 ## Scope
 
 This setup is specific to the Orin system where the NVMe partition has UUID:
