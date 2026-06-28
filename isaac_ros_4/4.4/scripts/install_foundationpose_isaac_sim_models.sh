@@ -26,8 +26,23 @@ log() { echo "[fp-isaac-sim-models] $*"; }
 ISAAC_ROS_WS="${ISAAC_ROS_WS:-/workspaces/isaac_ros-dev}"
 ASSETS="${ISAAC_ROS_WS}/isaac_ros_assets"
 TRTEXEC="${TENSORRT_COMMAND:-/usr/src/tensorrt/bin/trtexec}"
+# Set FP_MODELS_FORCE=1 to delete existing TensorRT engines first and rebuild them.
+# Needed when engines were compiled by a different TensorRT (e.g. carried over from
+# an older Isaac ROS release) — TensorRT refuses version-mismatched .plan/.engine files.
+FORCE="${FP_MODELS_FORCE:-0}"
 
+# ROS setup.bash references unset vars; relax nounset only while sourcing it.
+set +u
 source "/opt/ros/${ROS_DISTRO:-jazzy}/setup.bash"
+set -u
+
+if [[ "${FORCE}" == "1" ]]; then
+  log "FP_MODELS_FORCE=1 — removing existing TensorRT engines so they rebuild for the current TensorRT."
+  rm -f "${ASSETS}/models/foundationpose/refine_trt_engine.plan" \
+        "${ASSETS}/models/foundationpose/score_trt_engine.plan" \
+        "${ASSETS}/models/synthetica_detr/sdetr_grasp.plan"
+  find "${ASSETS}/models/dnn_stereo_disparity" -name 'light_ess.engine' -delete 2>/dev/null || true
+fi
 
 # --- FoundationPose ONNX -> TensorRT engines ---------------------------------
 FP_DIR="${ASSETS}/models/foundationpose"

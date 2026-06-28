@@ -116,7 +116,12 @@ ros2 launch isaac_ros_foundationpose isaac_ros_foundationpose_isaac_sim.launch.p
 ```
 
 > TensorRT engines are GPU/TensorRT-version specific. If you carried `isaac_ros_assets/` over from a
-> different TensorRT, delete the stale `*.plan` / `*.engine` and re-run the script.
+> different TensorRT (TRT errors like *"engine plan file is not compatible … expecting library version
+> 10.13.3.9"*), force a rebuild — it deletes the stale `*.plan`/`*.engine` and regenerates them:
+>
+> ```bash
+> FP_MODELS_FORCE=1 src/isaac_ros_custom_bringup/isaac_ros_4/4.4/scripts/install_foundationpose_isaac_sim_models.sh
+> ```
 
 ## Runtime knobs (entrypoint hooks)
 
