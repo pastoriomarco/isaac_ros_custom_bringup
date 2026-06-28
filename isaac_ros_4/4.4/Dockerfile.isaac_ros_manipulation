@@ -1,0 +1,60 @@
+ARG BASE_IMAGE=ubuntu:24.04
+
+FROM ${BASE_IMAGE}
+
+SHELL ["/bin/bash", "-c"]
+ENV DEBIAN_FRONTEND=noninteractive
+LABEL isaac_ros_manipulation_bootstrap_revision="2026-06-28-1"
+
+# Isaac ROS 4.4 renamed `isaac_manipulator` -> `isaac_ros_manipulation`
+# (apt: ros-jazzy-isaac-manipulator-bringup -> ros-jazzy-isaac-ros-manipulation-bringup)
+# and moved the planner backend to cuMotion.
+#
+# Isaac Sim uses Fast DDS by default. The startup hook can opt into CycloneDDS
+# with ISAAC_ROS_4_4_USE_CYCLONEDDS=1.
+
+# Bake the apt install sequence (plus nano) into the image so activation
+# doesn't repeat the heavy package installs on every launch.
+# Order is kept close to the working manual sequence: install optional
+# CycloneDDS support, python3-pip, and isaac-ros-manipulation-bringup.
+RUN --mount=type=cache,target=/var/cache/apt \
+    set -euo pipefail; \
+    apt-get update; \
+    apt-get install -y nano ros-jazzy-rmw-cyclonedds-cpp; \
+    apt update; \
+    apt install -y python3-pip; \
+    apt-get update; \
+    apt-get install -y \
+      ros-jazzy-isaac-ros-manipulation-bringup \
+      ros-jazzy-picknik-ament-copyright \
+      ros-jazzy-ros-testing; \
+    rm -rf /var/lib/apt/lists/*
+
+# FoundationPose + Isaac Sim example dependencies.
+# The "FoundationPose with Isaac Sim" tutorial
+# (ros2 launch isaac_ros_foundationpose isaac_ros_foundationpose_isaac_sim.launch.py)
+# chains RT-DETR (detection) -> ESS / light_ess (stereo depth) -> FoundationPose
+# and is driven through isaac_ros_examples. The *-models-install packages ship the
+# install_*_models.sh helpers used to fetch + convert the RT-DETR (sdetr_grasp) and
+# ESS (light_ess) engines; FoundationPose ONNX models are converted with trtexec.
+# See 4.4/README.md "FoundationPose + Isaac Sim" for the one-time model setup.
+# curl/jq/tar/git-lfs are needed by the NGC asset-download snippets.
+RUN --mount=type=cache,target=/var/cache/apt \
+    set -euo pipefail; \
+    apt-get update; \
+    apt-get install -y \
+      curl jq tar git-lfs \
+      ros-jazzy-isaac-ros-examples \
+      ros-jazzy-isaac-ros-foundationpose \
+      ros-jazzy-isaac-ros-rtdetr \
+      ros-jazzy-isaac-ros-rtdetr-models-install \
+      ros-jazzy-isaac-ros-ess \
+      ros-jazzy-isaac-ros-ess-models-install \
+      ros-jazzy-vision-msgs-rviz-plugins; \
+    git lfs install; \
+    rm -rf /var/lib/apt/lists/*
+
+# Run the workspace-scoped steps at container start (as the non-root user).
+RUN mkdir -p /usr/local/bin/scripts/entrypoint_additions
+COPY 90-isaac-ros-manipulation-bootstrap.user.sh /usr/local/bin/scripts/entrypoint_additions/90-isaac-ros-manipulation-bootstrap.user.sh
+RUN chmod +x /usr/local/bin/scripts/entrypoint_additions/90-isaac-ros-manipulation-bootstrap.user.sh
