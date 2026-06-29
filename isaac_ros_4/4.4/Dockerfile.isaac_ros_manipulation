@@ -46,6 +46,7 @@ RUN --mount=type=cache,target=/var/cache/apt \
       curl jq tar git-lfs \
       ros-jazzy-isaac-ros-examples \
       ros-jazzy-isaac-ros-foundationpose \
+      ros-jazzy-isaac-ros-yolov8 \
       ros-jazzy-isaac-ros-rtdetr \
       ros-jazzy-isaac-ros-rtdetr-models-install \
       ros-jazzy-isaac-ros-ess \
