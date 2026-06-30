@@ -61,7 +61,9 @@ The `manymove_xarm` startup hook builds `isaac_ros_custom_bringup`, ManyMove, an
 
 ### 3) Run
 Start Isaac Sim, open `src/isaac_sim_custom_examples/test_scene_realsense_foundationpose_trocar.usd`,
-press **Play** (publishes `/image_rect`, `/camera_info`, `/depth` as 32FC1 meters). Then:
+press **Play** (publishes `/image_rect`, `/camera_info`, `/depth` as 32FC1 meters). For
+multi-machine runs, apply the DDS/static-peer and Isaac Sim camera QoS notes in
+[`dds/README.md`](dds/README.md) before playback. Then:
 ```bash
 export YOLO_MODEL_NAME=trocar_short
 export MESH_FILE_PATH=${ISAAC_ROS_WS}/src/isaac_sim_custom_examples/trocar_short.obj
@@ -111,5 +113,10 @@ camera frame into `world` before applying pick/approach offsets and workspace bo
 - The encoder letterboxes with **CENTER** padding (pad top/bottom 140 for 1280×720→640×640); the
   unletterbox crop assumes this. If the mask looks misaligned with detections, check there.
 - rviz needs an X display (`launch_rviz:=False` + Foxglove is the headless option).
-- **Not yet run end-to-end on 4.4** — validate with `ros2 topic hz /detections_output` (YOLOv8 firing)
-  and `ros2 topic echo /output --once` (FoundationPose pose).
+- Isaac ROS 4.4 perception has produced `/output` as `vision_msgs/msg/Detection3DArray` in the
+  live trocar scene, with poses in `camera_color_optical_frame`. Full ManyForge Lite6 pick/drop
+  remains a separate qualification step.
+- Current observed `/output` carries empty detection id/class, score `0.0`, and zero covariance.
+  ManyForge's bootstrap scenario uses `selection: first` and explicit zero-field allowances only
+  for the controlled single-trocar scene; investigate score/covariance propagation before treating
+  this as a production perception gate.

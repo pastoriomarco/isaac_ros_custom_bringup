@@ -14,7 +14,7 @@
     export ROS_DOMAIN_ID=0            # same value on both; the ports below assume 0
 
   EDIT the <address> entries under <initialPeersList> to your two LAN IPs.
-  This box (Jetson Thor) = 192.168.1.136 on iface enP2p1s0. Set the other to your Isaac Sim host.
+  Thor = 192.168.1.136 on iface enP2p1s0. The current Isaac Sim laptop = 192.168.1.132.
   Both default to Fast DDS already, so keep both on Fast DDS (do NOT mix with CycloneDDS).
 -->
 <profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
@@ -57,7 +57,7 @@
                     </locator>
                     <locator>
                         <udpv4>
-                            <address>192.168.1.10</address>  <!-- EDIT: Isaac Sim host -->
+                            <address>192.168.1.132</address> <!-- Isaac Sim laptop -->
                             <port>7400</port>
                         </udpv4>
                     </locator>

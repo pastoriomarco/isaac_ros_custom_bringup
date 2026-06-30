@@ -12,26 +12,44 @@ so they already match — do **not** switch one to CycloneDDS (mixing vendors br
 Raw 1280×720 RGB + depth @30 Hz is ~1.5 Gbps; unicast keeps it off the gateway, but a single
 1 GbE link can still saturate — consider a dedicated NIC/subnet or lower camera res for stability.
 
-## Fix A — quickest (env vars only, no XML). Try this first.
+## Fix A — preferred first test (env vars only, no XML).
 Set on **both** the Isaac Sim host **and** inside the Isaac ROS container (same values):
 ```bash
+unset FASTRTPS_DEFAULT_PROFILES_FILE FASTDDS_DEFAULT_PROFILES_FILE
+unset ROS_DISCOVERY_SERVER ROS_SUPER_CLIENT CYCLONEDDS_URI
 export ROS_DOMAIN_ID=0
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST          # stop subnet-wide multicast discovery
-export ROS_STATIC_PEERS='192.168.1.136;<ISAAC_SIM_IP>'  # explicit unicast peers (Thor;Sim)
+export ROS_STATIC_PEERS='192.168.1.136;192.168.1.132'   # explicit unicast peers (Thor;laptop)
 ```
 `LOCALHOST` suppresses the subnet multicast sweep; `ROS_STATIC_PEERS` still lets the two named
 machines find each other (Jazzy "Improved Dynamic Discovery"). No file needed.
 
-## Fix B — robust (XML profile). Use if A isn't enough or for stable production streaming.
+For the Isaac Sim laptop, export those variables in the shell before launching:
+
+```bash
+cd ~/isaac-sim
+./isaac-sim.sh
+```
+
+Do not put these in the App Selector's "additional args" field; that field is for Kit startup
+arguments, not environment variables.
+
+## Fix B — explicit XML profile. Use if A is not enough or for locked-down deployments.
 `fastdds_unicast.xml` (in this folder) forces unicast discovery, disables multicast, and drops
-shared-memory. Edit the `<initialPeersList>` IPs (Thor is pre-filled; set the Isaac Sim host),
+shared-memory. The current file is pre-filled for Thor `192.168.1.136` and the Isaac Sim laptop
+`192.168.1.132`; edit the `<initialPeersList>` IPs if the hosts change,
 then on **both** machines:
 ```bash
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 export FASTRTPS_DEFAULT_PROFILES_FILE=/abs/path/to/fastdds_unicast.xml
+export FASTDDS_DEFAULT_PROFILES_FILE="$FASTRTPS_DEFAULT_PROFILES_FILE"
 export ROS_DOMAIN_ID=0
 ```
+
+Use Fix A or Fix B deliberately. If you are testing the env-var route, unset
+`FASTRTPS_DEFAULT_PROFILES_FILE` and `FASTDDS_DEFAULT_PROFILES_FILE` first so an older XML profile
+does not silently override the test.
 
 ### Isaac Sim host
 Set the env vars **in the shell before launching** (or in the App Selector's inherited
@@ -40,6 +58,7 @@ so they must be real environment variables:
 ```bash
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 export FASTRTPS_DEFAULT_PROFILES_FILE=$HOME/.ros/fastdds_unicast.xml   # copy this file there
+export FASTDDS_DEFAULT_PROFILES_FILE="$FASTRTPS_DEFAULT_PROFILES_FILE"
 export ROS_DOMAIN_ID=0
 ./isaac-sim.sh
 ```
@@ -55,6 +74,7 @@ file (it lives in the mounted workspace) by adding to the dev-container Docker a
 -e RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 -e ROS_DOMAIN_ID=0
 -e FASTRTPS_DEFAULT_PROFILES_FILE=/workspaces/isaac_ros-dev/src/isaac_ros_custom_bringup/isaac_ros_4/dds/fastdds_unicast.xml
+-e FASTDDS_DEFAULT_PROFILES_FILE=/workspaces/isaac_ros-dev/src/isaac_ros_custom_bringup/isaac_ros_4/dds/fastdds_unicast.xml
 ```
 The shipped `/etc/isaac-ros-cli/docker/middleware_profiles/rtps_udp_profile.xml` only disables
 shared-memory — it does **not** stop multicast — so override it with this profile.
