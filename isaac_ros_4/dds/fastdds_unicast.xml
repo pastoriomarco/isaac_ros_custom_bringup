@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Unicast, no-multicast Fast DDS profile for multi-machine Isaac Sim <-> Isaac ROS streaming.
+
+  WHY: ROS 2 / DDS uses MULTICAST for participant discovery by default. On an L2 switch
+  without IGMP snooping, multicast is flooded to every port (incl. the gateway uplink),
+  which spikes whole-LAN / internet latency when Isaac Sim streams camera topics.
+  This profile forces UNICAST discovery to named peers and disables multicast + shared
+  memory, confining ROS traffic to a point-to-point flow between the two machines.
+
+  USE THE SAME FILE ON BOTH MACHINES (Isaac Sim host AND the Isaac ROS container):
+    export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+    export FASTRTPS_DEFAULT_PROFILES_FILE=/abs/path/to/fastdds_unicast.xml
+    export ROS_DOMAIN_ID=0            # same value on both; the ports below assume 0
+
+  EDIT the <address> entries under <initialPeersList> to your two LAN IPs.
+  This box (Jetson Thor) = 192.168.1.136 on iface enP2p1s0. Set the other to your Isaac Sim host.
+  Both default to Fast DDS already, so keep both on Fast DDS (do NOT mix with CycloneDDS).
+-->
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+    <transport_descriptors>
+        <transport_descriptor>
+            <transport_id>UdpUnicast</transport_id>
+            <type>UDPv4</type>
+            <maxInitialPeersRange>100</maxInitialPeersRange>
+            <!-- OPTIONAL but recommended on Thor: bind to ONE NIC so DDS ignores the
+                 Jetson USB device-mode bridge (l4tbr0, 192.168.55.x) and Wi-Fi.
+                 Set <address> to THIS machine's LAN IP. On the Isaac Sim host, change it
+                 to that host's own LAN IP (or comment the block out). -->
+            <!--
+            <interfaceWhiteList>
+                <address>192.168.1.136</address>
+            </interfaceWhiteList>
+            -->
+        </transport_descriptor>
+    </transport_descriptors>
+
+    <participant profile_name="udp_unicast_profile" is_default_profile="true">
+        <rtps>
+            <userTransports>
+                <transport_id>UdpUnicast</transport_id>
+            </userTransports>
+            <!-- false => disable built-in transports (incl. shared memory). Shared memory
+                 cannot cross machines / the container boundary, so UDPv4-only is required. -->
+            <useBuiltinTransports>false</useBuiltinTransports>
+            <builtin>
+                <!-- Empty list => NO multicast discovery. This is what stops the LAN flood. -->
+                <metatrafficMulticastLocatorList/>
+                <!-- Unicast discovery peers: one <locator> per machine (include this one).
+                     Port 7400 = SPDP port for ROS_DOMAIN_ID=0 (formula: 7400 + 250*domain). -->
+                <initialPeersList>
+                    <locator>
+                        <udpv4>
+                            <address>192.168.1.136</address> <!-- Jetson Thor (this box) -->
+                            <port>7400</port>
+                        </udpv4>
+                    </locator>
+                    <locator>
+                        <udpv4>
+                            <address>192.168.1.10</address>  <!-- EDIT: Isaac Sim host -->
+                            <port>7400</port>
+                        </udpv4>
+                    </locator>
+                </initialPeersList>
+            </builtin>
+        </rtps>
+    </participant>
+</profiles>
