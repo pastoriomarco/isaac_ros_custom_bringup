@@ -3,6 +3,12 @@ Isaac ROS 3 (ROS 2 Humble) custom bringup
 
 This package provides standalone launch graphs to run a fine‑tuned YOLOv8 detector and wire it into the Isaac ROS FoundationPose pipeline using a (real or simulated) Intel RealSense RGB‑D camera. It keeps upstream packages unmodified.
 
+> **Isaac ROS 4.4 (Jazzy) port:** the trocar YOLOv8→FoundationPose example below has been ported to
+> 4.4 as `isaac_ros_4/launch/yolov8_foundationpose_isaac_sim.launch.py`. If you're on Thor/JetPack 7
+> with the 4.4 (`isaac-ros activate`) stack, use that instead — see
+> [isaac_ros_4/README.md](../isaac_ros_4/README.md) ("Perception example — YOLOv8 → FoundationPose").
+> The instructions below target ROS 2 Humble / Isaac ROS 3.x (Orin/JetPack 6) with `run_dev.sh`.
+
 ## PREREQUISITES
 
 To ensure you have everything needed to run the isaac_ros examples, and to correctly set the env variables needed, I strongly suggest you to complete the [isaac_ros_foundationpose tutorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_pose_estimation/isaac_ros_foundationpose/index.html#run-launch-file) and the [isaac_ros_yolov8 tutorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_object_detection/isaac_ros_yolov8/index.html#run-launch-file) before following this tutorial. The original isaac_ros_foundationpose pipeline also requires [isaac_ros_rtdetr turorial](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_object_detection/isaac_ros_rtdetr/index.html#quickstart) to be completed.
