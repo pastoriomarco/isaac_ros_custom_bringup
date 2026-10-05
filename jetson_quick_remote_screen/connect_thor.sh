@@ -121,69 +121,74 @@ else
 fi
 
 if [ "$ENABLE_1080P" = "yes" ]; then
-  echo "[*] Forcing 1080p on the Jetson (DISPLAY=:0, HDMI-0)..."
-  ssh "${ssh_master_opts[@]}" "${ssh_no_prompt_opts[@]}" "${JETSON_USER}@${JETSON_HOST}" \
-    "bash -lc 'DISPLAY=:0 xrandr --output HDMI-0 --mode 1920x1080 --rate 60'" >/dev/null 2>&1 || true
-  sleep 1
+  echo "[*] Forcing 1080p on the Jetson (HDMI-0) whenever x11vnc attaches..."
 fi
 
 echo "[*] Starting remote x11vnc on Thor (${JETSON_HOST})..."
-ssh "${ssh_master_opts[@]}" "${ssh_no_prompt_opts[@]}" "${JETSON_USER}@${JETSON_HOST}" "bash -lc '
-  set -e
-  pkill -x x11vnc >/dev/null 2>&1 || true
+# Runs as root: at the GDM login screen the X authority file belongs to gdm and
+# tndlux cannot read it. A follower loop re-attaches x11vnc to the X server on
+# the active VT, so the view survives the login screen -> user session hand-off
+# (TigerVNC offers to reconnect when the old X server goes away).
+ssh "${ssh_master_opts[@]}" "${ssh_no_prompt_opts[@]}" "${JETSON_USER}@${JETSON_HOST}" \
+  bash -s -- "$REMOTE_PORT" "$REMOTE_PID_FILE" "$ENABLE_1080P" <<'REMOTE'
+set -eu
+port="$1"; pid_file="$2"; force_1080p="$3"
 
-  AUTH_ARG=\"\"
-  RUN_AS_USER=\"${JETSON_USER}\"
-  XAUTH_PATH=\"\"
+if ! sudo -n true 2>/dev/null; then
+  echo "[remote] passwordless sudo is required to attach to the GDM display" >&2
+  exit 1
+fi
 
-  if [ -r \"/home/${JETSON_USER}/.Xauthority\" ]; then
-    XAUTH_PATH=\"/home/${JETSON_USER}/.Xauthority\"
-    AUTH_ARG=\"-auth \${XAUTH_PATH}\"
-  else
-    # Prefer the active seat0 GDM Xauthority, which is common on Thor.
-    seat_uid=\$(loginctl list-sessions --no-legend 2>/dev/null | while read -r session uid user seat rest; do
-      if [ \"\$seat\" = \"seat0\" ]; then
-        echo \"\$uid\"
-        break
+old_pid=$(cat "$pid_file" 2>/dev/null || true)
+if [ -n "$old_pid" ] && grep -qa x11vnc-follow "/proc/$old_pid/cmdline" 2>/dev/null; then
+  sudo -n kill "$old_pid" >/dev/null 2>&1 || true
+fi
+sudo -n pkill -x x11vnc >/dev/null 2>&1 || true
+
+sudo -n env PORT="$port" PID_FILE="$pid_file" FORCE_1080P="$force_1080p" \
+  nohup bash -c '
+    # x11vnc-follow
+    exec >>/tmp/x11vnc.log 2>&1
+    echo $$ > "$PID_FILE"
+    find_x() {
+      vt=$(cat /sys/class/tty/tty0/active); vt=${vt#tty}
+      for pid in $(pgrep -x Xorg); do
+        args=" $(tr "\0" " " </proc/$pid/cmdline)"
+        case "$args" in *" vt$vt "*) ;; *) continue ;; esac
+        auth=$(printf "%s\n" "$args" | sed -n "s/.* -auth \([^ ]*\).*/\1/p")
+        sock=$(ss -xlpn | grep "pid=$pid," | grep -o "/tmp/.X11-unix/X[0-9]*" | head -n1)
+        if [ -n "$auth" ] && [ -n "$sock" ]; then
+          echo ":${sock##*X} $auth"
+          return 0
+        fi
+      done
+      return 1
+    }
+    while true; do
+      if x=$(find_x); then
+        set -- $x
+        echo "[follow] attaching to display $1 (auth $2)"
+        if [ "$FORCE_1080P" = yes ]; then
+          DISPLAY="$1" XAUTHORITY="$2" xrandr --output HDMI-0 --mode 1920x1080 --rate 60 || true
+        fi
+        env DISPLAY="$1" XAUTHLOCALHOSTNAME=localhost \
+          x11vnc -display "$1" -auth "$2" -localhost -forever -noxdamage -nopw -rfbport "$PORT" || true
       fi
-    done)
-    if [ -n \"\$seat_uid\" ] && [ -r \"/run/user/\${seat_uid}/gdm/Xauthority\" ]; then
-      XAUTH_PATH=\"/run/user/\${seat_uid}/gdm/Xauthority\"
-      AUTH_ARG=\"-auth \${XAUTH_PATH}\"
-      RUN_AS_USER=\"root\"
-    elif [ -r \"/run/user/\$(id -u gdm)/gdm/Xauthority\" ]; then
-      XAUTH_PATH=\"/run/user/\$(id -u gdm)/gdm/Xauthority\"
-      AUTH_ARG=\"-auth \${XAUTH_PATH}\"
-      RUN_AS_USER=\"root\"
-    else
-      AUTH_ARG=\"-auth guess\"
-      RUN_AS_USER=\"root\"
-    fi
-  fi
+      sleep 1
+    done
+  ' >/dev/null 2>&1 </dev/null &
 
-	  if [ \"\$RUN_AS_USER\" = \"root\" ]; then
-	    sudo bash -lc \"env DISPLAY=:0 XAUTHLOCALHOSTNAME=localhost nohup x11vnc \$AUTH_ARG -display :0 -localhost -forever -noxdamage -nopw -rfbport ${REMOTE_PORT} >/tmp/x11vnc.log 2>&1 & echo \\\$! > ${REMOTE_PID_FILE}\"
-	  else
-	    env \
-	      DISPLAY=:0 \
-	      XAUTHORITY=\"\${XAUTH_PATH}\" \
-      nohup x11vnc \$AUTH_ARG -display :0 -localhost -forever -noxdamage -nopw -rfbport ${REMOTE_PORT} \
-        >/tmp/x11vnc.log 2>&1 &
-    echo \$! > ${REMOTE_PID_FILE}
+for _ in $(seq 1 20); do
+  if ss -ltn "sport = :$port" | grep -q LISTEN; then
+    echo "[remote] x11vnc follower pid=$(cat "$pid_file" 2>/dev/null) listening on $port"
+    exit 0
   fi
   sleep 0.5
-  pid=\$(cat ${REMOTE_PID_FILE})
-  if ! kill -0 \"\$pid\" >/dev/null 2>&1; then
-    if ps -p \"\$pid\" >/dev/null 2>&1; then
-      echo \"[remote] x11vnc is running (pid=\$pid) but owned by another user\"
-    else
-      echo \"[remote] x11vnc failed to stay up (pid=\$pid)\" >&2
-      tail -n 40 /tmp/x11vnc.log >&2 || true
-      exit 1
-    fi
-  fi
-  echo \"[remote] x11vnc pid=\$pid\"
-'"
+done
+echo "[remote] x11vnc did not start listening on port $port" >&2
+tail -n 40 /tmp/x11vnc.log >&2 || true
+exit 1
+REMOTE
 
 echo "[*] Waiting for VNC server to be ready..."
 ready=""
