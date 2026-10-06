@@ -23,7 +23,7 @@ Content is grouped by Isaac ROS major release, with a few utilities that are use
 ### `isaac_ros_4/` (ROS 2 Jazzy / Isaac ROS 4.x)
 
 - A dev-image customization layer for Isaac ROS Manipulation + FoundationPose (Dockerfile + optional entrypoint hooks) to install tutorial packages and models.
-- Versioned by Isaac ROS minor: `isaac_ros_4/4.4/` (recommended, Isaac ROS 4.4) down to `isaac_ros_4/4.0/` (legacy).
+- Versioned by Isaac ROS minor: [4.6](isaac_ros_4/4.6/README.md) is a **NOT VALIDATED** adaptation of 4.4; `isaac_ros_4/4.4/` remains the existing reference, with older helpers down to `4.0/` (legacy).
 - Isaac ROS 4.4 renamed `isaac_manipulator` → `isaac_ros_manipulation`; the `4.4/` layer carries that rename through the image key, Dockerfile, bootstrap, and apt package, and bakes in the FoundationPose / RT-DETR / ESS packages for the Isaac Sim example.
 - The `4.4/` layer activates with `isaac-ros activate --build-local` once the host is on `release-4.4`; FoundationPose models install via `isaac_ros_4/4.4/scripts/install_foundationpose_isaac_sim_models.sh`.
 - Full usage and rationale are in [isaac_ros_4/README.md](isaac_ros_4/README.md).

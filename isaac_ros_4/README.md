@@ -2,7 +2,8 @@
 
 This directory is versioned by **Isaac ROS minor release**:
 
-- `4.4/`: **recommended** — Isaac ROS 4.4 rename (`isaac_manipulator` → `isaac_ros_manipulation`)
+- [4.6](4.6/README.md): **NOT VALIDATED** — adaptation of the 4.4 layers; image build and all runtime checks deferred. Use an isolated 4.6 environment.
+- `4.4/`: **existing reference** — Isaac ROS 4.4 rename (`isaac_manipulator` → `isaac_ros_manipulation`)
   + FoundationPose / RT-DETR / ESS baked in for the "FoundationPose with Isaac Sim" example
 - `4.3/`: previous (workspace-root `build/`, `log/`, `install/` + idempotent clones)
 - `4.2/`: previous recommended layout
