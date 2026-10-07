@@ -8,6 +8,7 @@ Content is grouped by Isaac ROS major release, with a few utilities that are use
 
 - Isaac ROS 3 (Humble): [isaac_ros_3/README.md](isaac_ros_3/README.md)
 - Isaac ROS 4 (Jazzy): [isaac_ros_4/README.md](isaac_ros_4/README.md)
+- Isaac ROS 5 (Lyrical): [isaac_ros_5/README.md](isaac_ros_5/README.md) — reviewed dependency proposal; custom image and launch port **not validated**.
 - Jetson Orin NVMe storage: [jetson_orin_storage/README.md](jetson_orin_storage/README.md)
 - Jetson remote screen: [jetson_quick_remote_screen/README.md](jetson_quick_remote_screen/README.md)
 
@@ -27,6 +28,13 @@ Content is grouped by Isaac ROS major release, with a few utilities that are use
 - Isaac ROS 4.4 renamed `isaac_manipulator` → `isaac_ros_manipulation`; the `4.4/` layer carries that rename through the image key, Dockerfile, bootstrap, and apt package, and bakes in the FoundationPose / RT-DETR / ESS packages for the Isaac Sim example.
 - The `4.4/` layer activates with `isaac-ros activate --build-local` once the host is on `release-4.4`; FoundationPose models install via `isaac_ros_4/4.4/scripts/install_foundationpose_isaac_sim_models.sh`.
 - Full usage and rationale are in [isaac_ros_4/README.md](isaac_ros_4/README.md).
+
+### `isaac_ros_5/` (ROS 2 Lyrical / Isaac ROS 5.0)
+
+- A small perception image extension for FoundationPose, custom YOLO and optional visualization, using NVIDIA's existing development base.
+- Documents the actual 5.0 launch changes and required versus optional dependencies. The 4.x launch is not yet ported to 5.0.
+- Does not install the complete manipulation workflow or add ManyMove/ManyForge images, drivers, startup builds or model downloads.
+- See [the dependency review and validation steps](isaac_ros_5/README.md).
 
 ### `jetson_quick_remote_screen/` (utility)
 

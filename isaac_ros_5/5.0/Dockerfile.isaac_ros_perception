@@ -1,0 +1,33 @@
+# NOT VALIDATED: dependency proposal reviewed against release-5.0 on 2026-10-07.
+# Extension of the matching NVIDIA Isaac ROS 5.0/Lyrical development image.
+# BASE_IMAGE is supplied by isaac-ros-cli, or explicitly by docker build.
+# A plain Ubuntu image is not a supported base for this layer.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ARG DEBIAN_FRONTEND=noninteractive
+# Direct Isaac packages checked in the NVIDIA noble-jetpack ARM64 index.
+# The base and transitive dependency closure still need pinning at validation.
+ARG ISAAC_ROS_DEB_VERSION=5.0.0-0noble.20260918011409000
+LABEL isaac_ros_custom_bringup.validation="not-validated"
+LABEL isaac_ros_custom_bringup.profile="perception-5.0"
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    set -eu; \
+    test -f /opt/ros/lyrical/setup.bash; \
+    test "${ROS_DISTRO:-lyrical}" = lyrical; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+      "ros-lyrical-isaac-ros-foundationpose=${ISAAC_ROS_DEB_VERSION}" \
+      "ros-lyrical-isaac-ros-yolov8=${ISAAC_ROS_DEB_VERSION}" \
+      "ros-lyrical-isaac-ros-topic-tools=${ISAAC_ROS_DEB_VERSION}" \
+      "ros-lyrical-isaac-ros-depth-image-proc=${ISAAC_ROS_DEB_VERSION}" \
+      "ros-lyrical-isaac-ros-examples=${ISAAC_ROS_DEB_VERSION}" \
+      ros-lyrical-vision-msgs-rviz-plugins; \
+    rm -rf /var/lib/apt/lists/*
+
+# FoundationPose pulls encoder/image/tensor processing, TensorRT, RT-DETR and
+# RViz through upstream dependencies. Installed packages do not start nodes.
+# No entrypoint hook: inherit NVIDIA's setup, install nothing on activation,
+# and launch only the selected graph after assets have been prepared explicitly.
