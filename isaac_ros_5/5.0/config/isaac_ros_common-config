@@ -1,0 +1,4 @@
+# Copy to ${ISAAC_ROS_WS}/scripts/.isaac_ros_common-config on the host.
+# First match intentionally pins the existing ARM64 base; other NVIDIA layers
+# remain available in the default directory. Review the pin for other platforms.
+CONFIG_DOCKER_SEARCH_DIRS=("${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_5/5.0/base" /etc/isaac-ros-cli/docker "${ISAAC_ROS_WS}/src/isaac_ros_custom_bringup/isaac_ros_5/5.0")

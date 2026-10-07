@@ -1,0 +1,12 @@
+# Workspace-level Isaac ROS CLI configuration; merge with other settings only
+# deliberately. Image-key sequences from lower-priority scopes are appended.
+docker:
+  image:
+    additional_image_keys:
+      - isaac_ros_perception
+    push: false
+  run:
+    container_name: isaac_ros5_perception_dev
+
+apt:
+  repository: https://isaac.download.nvidia.com/isaac-ros/release-5.0

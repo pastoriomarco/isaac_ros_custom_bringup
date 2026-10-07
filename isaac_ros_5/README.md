@@ -1,17 +1,17 @@
 # Isaac ROS 5.0 — focused perception environment
 
-**Status, 2026-10-07: dependency/source review only; custom image NOT VALIDATED.**
-The maintainer confirmed NVIDIA's RT-DETR and FoundationPose examples working
-on Thor. That evidence belongs to the existing Thor environment; it does not
-validate this Dockerfile, the custom YOLO/trocar launch or an Orin installation.
-No 5.0 custom launch is installed by this repository yet.
+**Status, 2026-10-07: image build, CLI activation and stock FoundationPose
+reference-bag smoke check passed on Thor. Custom YOLO/trocar and simulator
+integration remain NOT VALIDATED.** Existing tutorial TensorRT engines were
+reused without regeneration. No 5.0 custom launch is installed by this
+repository yet; Orin and AMD64 execution remain unverified.
 
 ## Start with the existing working environment
 
-Keep Thor's working Isaac ROS 5.0 container and assets as the first integration
-reference. First prove the laptop simulator's camera stream reaches it and that
-its pose messages reach the consumer. Build this image extension separately
-after recording the working base image, package versions and model identities.
+Keep Thor's original tutorial assets as the integration reference. The candidate
+image now passes the recorded-data check described below. Next prove that the
+laptop simulator's camera stream reaches it and its pose messages reach the
+consumer. Base image, package versions and model identities are recorded.
 There is no need to install the complete suite on Orin to test a ROS arm there.
 
 The intended first custom pipeline is:
@@ -32,7 +32,7 @@ requests, mapping and alternate detectors remain separate follow-ups.
 
 ## What to install and what to run
 
-The proposed extension is [Dockerfile.isaac_ros_perception](5.0/Dockerfile.isaac_ros_perception).
+The extension is [Dockerfile.isaac_ros_perception](5.0/Dockerfile.isaac_ros_perception).
 It retains official binary packages, without the full manipulation metapackage.
 
 | Capability | Package or dependency | Initial treatment |
@@ -62,7 +62,7 @@ direct-topic trocar path. It provides a separate action-oriented workflow;
 port it only if a selected application needs that interface. Do not install
 the whole manipulation stack merely to obtain FoundationPose.
 
-This is a **smaller dependency addition to NVIDIA's development image**, not a
+This is a **focused dependency selection on NVIDIA's development image**, not a
 claim of a minimal deployment image. The base already contains development
 tools, and upstream dependencies include RT-DETR, RViz and CUDA tooling.
 `--no-install-recommends` does not remove required dependencies. Avoid forking
@@ -110,7 +110,97 @@ whole-workspace `rosdep install` for this profile. The launch port must update
 the package/install arrangement while keeping the existing 3.x/4.x launch
 paths usable. Creating this folder does not declare that packaging problem solved.
 
-## Image configuration when a build is scheduled
+## Build configuration and normal startup
+
+Workspace configuration templates are in [5.0/config](5.0/config). For the Thor
+candidate, [base/Dockerfile.isaac_ros](5.0/base/Dockerfile.isaac_ros) deliberately
+selects the already downloaded NVIDIA ARM64 JetPack image by digest. The search
+order selects that file before the system Dockerfile. This avoids rebuilding
+NVIDIA's entire base, which CLI 2.6.0 attempted when its intermediate registry
+cache lookup failed. No NVIDIA CLI source is patched. This pin is an ARM64
+profile, not an AMD64 image or an Orin qualification result.
+
+On Thor, use the usual source workspace, `~/workspaces/dev_ws`. With the repository present at
+`src/isaac_ros_custom_bringup`, install the templates there:
+
+```bash
+export ISAAC_ROS_WS="$HOME/workspaces/dev_ws"
+cd "$ISAAC_ROS_WS"
+mkdir -p .isaac-ros-cli scripts validation
+cp src/isaac_ros_custom_bringup/isaac_ros_5/5.0/config/config.yaml .isaac-ros-cli/config.yaml
+cp src/isaac_ros_custom_bringup/isaac_ros_5/5.0/config/isaac_ros_common-config scripts/.isaac_ros_common-config
+cp src/isaac_ros_custom_bringup/isaac_ros_5/5.0/config/isaac_ros_dev-dockerargs scripts/.isaac_ros_dev-dockerargs
+set -o pipefail
+isaac-ros activate --build-local --build-only --no-push 2>&1 | tee validation/image-build-pinned.log
+```
+
+Run that build once, not from multiple terminals. Follow it from another terminal
+on Thor with `tail -n 80 -F ~/workspaces/dev_ws/validation/image-build-pinned.log`.
+The candidate container name is `isaac_ros5_perception_dev`. The original demo
+assets are mounted read-only at `/reference_assets`; create new outputs in the
+candidate workspace. Check that the original asset path exists before activation.
+The config templates are workspace-level settings, not global host settings.
+The Docker-arguments file must contain arguments only: CLI 2.6.0 passes comment
+lines into its shell command rather than ignoring them.
+
+### Custom workpiece model for the integration handoff
+
+The maintainer selected the YOLO export in
+[`sdg_training_custom/yolov8/example_output`](https://github.com/pastoriomarco/sdg_training_custom/tree/f90b6cf0c8ac1dab8e5e9f8888085c28f2702c41/yolov8/example_output).
+The source commit is `f90b6cf0c8ac1dab8e5e9f8888085c28f2702c41`.
+Keep these assets outside the bringup Git repository:
+
+```text
+~/workspaces/dev_ws/isaac_ros_assets/models/trocar_yolov8/
+  best.onnx
+  best.pt
+  provenance.json
+  SHA256SUMS
+```
+
+The same workspace is mounted inside the candidate container at
+`/workspaces/isaac_ros-dev`, so its ONNX path is
+`/workspaces/isaac_ros-dev/isaac_ros_assets/models/trocar_yolov8/best.onnx`.
+`provenance.json` records source URLs, Git blob identities and SHA-256 hashes;
+verify with `sha256sum -c SHA256SUMS` from the asset directory. Source license
+and training README copies accompany the models. Verify the ONNX bindings,
+input dimensions, class metadata and preprocessing during the custom launch
+port. The downloaded export is not yet qualified with the 5.0 decoder.
+Generate any Thor TensorRT engine separately; do not replace the source ONNX
+or infer engine portability to Orin from the shared ARM64 architecture.
+
+### Normal startup: use the existing image
+
+For every normal startup after the first build, activate it **without rebuilding**:
+
+```bash
+export ISAAC_ROS_WS="$HOME/workspaces/dev_ws"
+cd "$ISAAC_ROS_WS"
+isaac-ros activate --start-only
+```
+
+`--start-only` starts or attaches to the configured container using the local
+image; if that image is missing, it refuses instead of building. Do not combine
+it with `--build` or `--build-local`. Reserve build commands for intentional
+image dependency changes. Moving the workspace or editing these run arguments
+does not change the Dockerfile content hash; activation after the move to
+`dev_ws` was verified with the same image. Keep validation results in this
+README rather than changing Dockerfile labels merely to record a passed test.
+
+CLI 2.6.0's outer activation wrapper does not propagate every child failure as a
+nonzero exit status. Check the build log and final local image identity and
+actually test activation; a zero shell exit status alone is not build evidence.
+Its post-build availability check also tries `docker pull` before checking the
+local image. A custom tag built with `--no-push` is absent from NVIDIA's registry,
+so that pull prints `not found` even after a successful build. The local image
+inspection and actual activation distinguish this expected registry miss from
+a build failure. `--start-only` uses the local image check directly.
+
+### Selecting another base or platform
+
+The general customization rules below still apply when selecting a different
+base/platform. They are an alternative to the pinned ARM64 search configuration,
+not additional instructions to overwrite it.
 
 Use a matching **Isaac ROS release-5.0 / Lyrical** NVIDIA development base for
 the target architecture. The layer requires `BASE_IMAGE`; plain Ubuntu is not
@@ -162,15 +252,16 @@ actual combination before choosing a deployment default.
 ## Small validation sequence
 
 1. Record the existing Thor image/package/model identities without replacing it.
-2. With the laptop's existing Isaac Sim 5/5.1 internal Jazzy bridge, prove real
+2. Build the candidate layer separately and check the resolved dependencies,
+   component registrations and reference-bag inference. Existing standalone
+   demos remain comparison inputs; the Thor result is recorded below.
+3. With the laptop's existing Isaac Sim 5/5.1 internal Jazzy bridge, prove real
    camera messages and pose results cross the selected common DDS domain.
    Start with one CameraInfo sample and a synthetic, namespaced
    Detection3DArray received in the control environment; then test image
    delivery and real inference. These first checks need no robot motion.
    Check payloads, timestamps and frames, not just discovery. Do not source
    Lyrical into the simulator process. NVIDIA documents a separate 5/5.1 path.
-3. Build the candidate layer separately and check the resolved dependencies and
-   component registrations. Existing standalone demos remain comparison inputs.
 4. Port the custom launch and prove one custom workpiece pose, with correct
    geometry, mask alignment and optional RViz display. Keep pose inference
    bounded/on demand as appropriate; validate tracking separately if selected.
@@ -178,7 +269,38 @@ actual combination before choosing a deployment default.
    with its control, grasp and contact-policy prerequisites. Perception output
    alone does not prove a complete pick workflow.
 
-No runtime, image-size or performance result is claimed for the new layer yet.
+### Thor image verification, 2026-10-07
+
+- Base digest: `sha256:4b8dd4ed835c06a191775d0fef9d9dc9ac942d37a7cf5c042c9bd206afed877e`.
+- Local image tag: `nvcr.io/nvidia/isaac/ros:isaac_ros-isaac_ros_perception_cdd1894bfc775397b805f2e3c8e60213-arm64-jetpack`.
+- Inspected image ID: `sha256:751451374506d62d22b04e40b6fdcc07d567aa55f6c9bf01b6bebebfea29a26c`, `linux/arm64`.
+- Docker-reported size: 29,940,934,639 bytes (29.94 GB). This is a development
+  image, not a minimal runtime artifact. The upstream TensorRT ROS package
+  requires the CUDA toolkit and TensorRT development packages.
+- FoundationPose, YOLOv8 and topic-tools: `5.0.0-0noble.20260918011409000`;
+  TensorRT: `10.16.2.10-1+cuda13.2`; CUDA toolkit: `13.2.2-1`;
+  Isaac ROS CLI: `2.6.0-1.20260919010821`.
+- CLI activation from `~/workspaces/dev_ws` passed. Original tutorial assets
+  are mounted read-only at `/reference_assets`; custom YOLO files are in the
+  writable workspace asset directory above.
+- Required component registrations passed, including FoundationPose, tracking,
+  detection filtering/mask conversion, TensorRT, YOLOv8 and camera-drop.
+- Existing refine, score and RT-DETR engines deserialized successfully.
+  The stock FoundationPose fragment, fed the original reference bag, emitted
+  a nonempty finite pose in `tf_camera`. No ONNX export or engine rebuild ran.
+- The check used local-only DDS domain 77; it did not test simulator/network
+  interoperability or the custom YOLO graph. Test processes were stopped after
+  the result; the development container remains available.
+
+Evidence on Thor is under `~/workspaces/dev_ws/validation/`: build and smoke
+logs, `image-validation.json`, `reference-environment.json`, `packages.tsv`,
+component registrations, engine-load logs, launch/playback logs and the captured
+`foundationpose-observation.json`. The one-off bounded check and its invocation
+are preserved there as `perception_smoke.py` and `run-smoke.sh`.
+
+This is functional image evidence, not a latency, throughput or custom-workflow
+qualification. The Dockerfile's original `not-validated` label is unchanged;
+this dated record describes the narrower checks actually performed.
 The existing 4.6 adaptation stays separate and NOT VALIDATED; it is not a
 prerequisite for the 5.0 path.
 

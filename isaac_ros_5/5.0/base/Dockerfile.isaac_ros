@@ -1,0 +1,5 @@
+# Pinned ARM64 JetPack base already present on Thor, inspected 2026-10-07.
+# This optional first layer reuses NVIDIA's binary image instead of rebuilding
+# the vendor Dockerfile. It is not an AMD64 profile; qualify Orin separately.
+# Selected ahead of /etc/isaac-ros-cli/docker by this workspace's config.
+FROM nvcr.io/nvidia/isaac/ros@sha256:4b8dd4ed835c06a191775d0fef9d9dc9ac942d37a7cf5c042c9bd206afed877e
