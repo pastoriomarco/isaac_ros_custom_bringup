@@ -1,0 +1,3 @@
+/image_rect: {history: keep_last, depth: 10, reliability: reliable, durability: volatile}
+/depth: {history: keep_last, depth: 10, reliability: reliable, durability: volatile}
+/camera_info: {history: keep_last, depth: 10, reliability: reliable, durability: volatile}

@@ -1,10 +1,10 @@
 # Isaac ROS 5.0 — focused perception environment
 
 **Status, 2026-10-07: image build, CLI activation and stock FoundationPose
-reference-bag smoke check passed on Thor. Custom YOLO/trocar and simulator
-integration remain NOT VALIDATED.** Existing tutorial TensorRT engines were
-reused without regeneration. No 5.0 custom launch is installed by this
-repository yet; Orin and AMD64 execution remain unverified.
+reference-bag smoke check passed on Thor. The custom YOLO/trocar launch is
+ported to 5.0 and validated on Thor against the laptop Isaac Sim scene for one
+object: see [TROCAR_YOLO_FOUNDATIONPOSE.md](TROCAR_YOLO_FOUNDATIONPOSE.md).**
+Orin and AMD64 execution remain unverified.
 
 ## Start with the existing working environment
 

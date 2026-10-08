@@ -14,8 +14,9 @@
   <exec_depend>ament_index_python</exec_depend>
 
   <!-- Runtime dependencies for the launch graph -->
-  <exec_depend>realsense2_camera</exec_depend>
-  <exec_depend>isaac_ros_nitros_topic_tools</exec_depend>
+  <exec_depend condition="$ROS_DISTRO != lyrical">realsense2_camera</exec_depend>
+  <exec_depend condition="$ROS_DISTRO != lyrical">isaac_ros_nitros_topic_tools</exec_depend>
+  <exec_depend condition="$ROS_DISTRO == lyrical">isaac_ros_topic_tools</exec_depend>
   <exec_depend>isaac_ros_depth_image_proc</exec_depend>
   <exec_depend>isaac_ros_dnn_image_encoder</exec_depend>
   <exec_depend>isaac_ros_tensor_rt</exec_depend>
